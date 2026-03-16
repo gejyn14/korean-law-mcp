@@ -1,24 +1,77 @@
 #!/usr/bin/env node
 
 /**
- * Korean Law CLI
- * MCP 서버와 동일한 도구를 커맨드라인에서 직접 실행
+ * Korean Law CLI v2.0
+ * 자연어 한 줄로 모든 법령을 조회하는 프로덕션급 CLI
  *
  * Usage:
- *   korean-law search_law --query "민법"
- *   korean-law get_law_text --mst 160001 --jo "제1조"
- *   korean-law list
- *   korean-law list --category 판례
- *   korean-law help search_law
+ *   korean-law "민법 제1조"                    # 자연어 → 자동 라우팅
+ *   korean-law "음주운전 처벌 기준"             # 종합 리서치 자동 실행
+ *   korean-law "관세법 개정 이력"               # 개정추적 체인 자동 실행
+ *   korean-law search_law --query "민법"       # 직접 도구 호출 (기존 방식)
+ *   korean-law list                            # 도구 목록
+ *   korean-law interactive                     # 대화형 모드
  */
 
 import { Command } from "commander"
 import { z } from "zod"
+import * as readline from "readline"
 import { LawApiClient } from "./lib/api-client.js"
 import { allTools } from "./tool-registry.js"
-import type { McpTool } from "./lib/types.js"
+import { routeQuery, explainRoute } from "./lib/query-router.js"
+import type { McpTool, ToolResponse } from "./lib/types.js"
 
-const VERSION = "1.8.0"
+const VERSION = "2.0.0"
+
+// ────────────────────────────────────────
+// CLI Output Formatting
+// ────────────────────────────────────────
+
+const isColorSupported = process.stdout.isTTY && !process.env.NO_COLOR
+
+const fmt = {
+  bold: (s: string) => isColorSupported ? `\x1b[1m${s}\x1b[0m` : s,
+  dim: (s: string) => isColorSupported ? `\x1b[2m${s}\x1b[0m` : s,
+  green: (s: string) => isColorSupported ? `\x1b[32m${s}\x1b[0m` : s,
+  yellow: (s: string) => isColorSupported ? `\x1b[33m${s}\x1b[0m` : s,
+  cyan: (s: string) => isColorSupported ? `\x1b[36m${s}\x1b[0m` : s,
+  red: (s: string) => isColorSupported ? `\x1b[31m${s}\x1b[0m` : s,
+  blue: (s: string) => isColorSupported ? `\x1b[34m${s}\x1b[0m` : s,
+  magenta: (s: string) => isColorSupported ? `\x1b[35m${s}\x1b[0m` : s,
+}
+
+function printBanner() {
+  console.log()
+  console.log(fmt.bold("  Korean Law CLI v" + VERSION))
+  console.log(fmt.dim("  법제처 API 기반 · 64개 도구 · 자연어 지원"))
+  console.log()
+}
+
+function printRouteInfo(tool: string, reason: string) {
+  console.log(fmt.dim(`  [라우팅] ${tool} — ${reason}`))
+  console.log()
+}
+
+function formatOutput(text: string): string {
+  if (!isColorSupported) return text
+
+  return text
+    // 섹션 헤더
+    .replace(/^(═+.*═+)$/gm, (m) => fmt.bold(fmt.cyan(m)))
+    .replace(/^(▶\s*.+)$/gm, (m) => fmt.bold(fmt.green(m)))
+    // 법령명/제목
+    .replace(/^(법령명:\s*.+)$/gm, (m) => fmt.bold(m))
+    // 안내 메시지
+    .replace(/(💡.+)/g, (m) => fmt.yellow(m))
+    // 에러
+    .replace(/(❌.+)/g, (m) => fmt.red(m))
+    // 번호 목록
+    .replace(/^(\d+\.\s)/gm, (m) => fmt.cyan(m))
+}
+
+// ────────────────────────────────────────
+// Schema Extraction (for subcommands)
+// ────────────────────────────────────────
 
 interface CliOption {
   name: string
@@ -28,9 +81,6 @@ interface CliOption {
   defaultValue?: unknown
 }
 
-/**
- * Zod 스키마 → z.toJSONSchema() → CLI 옵션 추출
- */
 function extractOptionsFromSchema(schema: z.ZodSchema): CliOption[] {
   let jsonSchema: Record<string, any>
   try {
@@ -58,7 +108,6 @@ function extractOptionsFromSchema(schema: z.ZodSchema): CliOption[] {
       type = "array"
     }
 
-    // default가 있으면 required에서 제외
     const hasDefault = prop.default !== undefined
     options.push({
       name: key,
@@ -72,9 +121,6 @@ function extractOptionsFromSchema(schema: z.ZodSchema): CliOption[] {
   return options
 }
 
-/**
- * CLI 옵션 값을 적절한 타입으로 변환
- */
 function coerceValue(value: string, type: string): unknown {
   switch (type) {
     case "number": return Number(value)
@@ -87,23 +133,333 @@ function coerceValue(value: string, type: string): unknown {
   }
 }
 
-/**
- * 도구 카테고리 추출 (description의 [카테고리] 부분)
- */
 function getCategory(tool: McpTool): string {
   const match = tool.description.match(/^\[(.+?)\]/)
   return match ? match[1] : "기타"
 }
 
+// ────────────────────────────────────────
+// Core: Execute Tool
+// ────────────────────────────────────────
+
+function getApiClient(): LawApiClient {
+  const apiKey = process.env.LAW_OC || ""
+  if (!apiKey) {
+    console.error(fmt.red("LAW_OC 환경변수가 필요합니다."))
+    console.error(fmt.dim("API 키 발급: https://open.law.go.kr/LSO/openApi/guideResult.do"))
+    process.exit(1)
+  }
+  return new LawApiClient({ apiKey })
+}
+
+async function executeTool(
+  apiClient: LawApiClient,
+  toolName: string,
+  params: Record<string, unknown>
+): Promise<ToolResponse> {
+  const tool = allTools.find(t => t.name === toolName)
+  if (!tool) {
+    return {
+      content: [{ type: "text", text: `알 수 없는 도구: ${toolName}` }],
+      isError: true,
+    }
+  }
+
+  const parsed = tool.schema.parse(params)
+  return tool.handler(apiClient, parsed)
+}
+
+/**
+ * 자연어 쿼리 실행 (라우팅 + 파이프라인)
+ */
+async function executeNaturalQuery(
+  apiClient: LawApiClient,
+  query: string,
+  verbose: boolean
+): Promise<void> {
+  const route = routeQuery(query)
+
+  if (verbose) {
+    console.log(fmt.dim(explainRoute(query)))
+  } else {
+    printRouteInfo(route.tool, route.reason)
+  }
+
+  // 1단계: 메인 도구 실행
+  const result = await executeTool(apiClient, route.tool, route.params)
+
+  // 파이프라인이 있으면 1단계 결과에서 MST/lawId 추출하여 2단계 실행
+  if (route.pipeline && route.pipeline.length > 0 && !result.isError) {
+    const firstOutput = result.content[0]?.text || ""
+
+    // MST 추출 (검색 결과에서)
+    const mstMatch = firstOutput.match(/MST:\s*(\d+)/)
+    const lawIdMatch = firstOutput.match(/법령ID:\s*(\d+)/)
+
+    if (mstMatch || lawIdMatch) {
+      for (const step of route.pipeline) {
+        const pipeParams = { ...step.params }
+        if (mstMatch) pipeParams.mst = mstMatch[1]
+        else if (lawIdMatch) pipeParams.lawId = lawIdMatch[1]
+
+        if (verbose) {
+          console.log(fmt.dim(`  → 파이프라인: ${step.tool}(${JSON.stringify(pipeParams)})`))
+        }
+
+        const pipeResult = await executeTool(apiClient, step.tool, pipeParams)
+        console.log(formatOutput(pipeResult.content.map(c => c.text).join("\n")))
+
+        if (pipeResult.isError) {
+          process.exitCode = 1
+        }
+      }
+      return
+    }
+  }
+
+  // 결과 출력
+  console.log(formatOutput(result.content.map(c => c.text).join("\n")))
+
+  if (result.isError) {
+    process.exitCode = 1
+  }
+}
+
+// ────────────────────────────────────────
+// Interactive REPL Mode
+// ────────────────────────────────────────
+
+async function runInteractive(): Promise<void> {
+  const apiClient = getApiClient()
+
+  printBanner()
+  console.log(fmt.green("  대화형 모드 시작"))
+  console.log(fmt.dim("  자연어로 법령을 검색하세요. 'exit'로 종료합니다."))
+  console.log()
+  console.log(fmt.dim("  예시:"))
+  console.log(fmt.dim('    > 민법 제1조'))
+  console.log(fmt.dim('    > 음주운전 처벌 기준'))
+  console.log(fmt.dim('    > 관세법 3단비교'))
+  console.log(fmt.dim('    > 건축허가 절차 수수료'))
+  console.log()
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: fmt.cyan("법령> "),
+    // history support
+    historySize: 100,
+  })
+
+  // 히스토리 저장용
+  const history: string[] = []
+
+  rl.prompt()
+
+  rl.on("line", async (line: string) => {
+    const input = line.trim()
+
+    if (!input) {
+      rl.prompt()
+      return
+    }
+
+    // 특수 명령어
+    if (input === "exit" || input === "quit" || input === "q") {
+      console.log(fmt.dim("\n종료합니다."))
+      rl.close()
+      process.exit(0)
+    }
+
+    if (input === "help" || input === "?") {
+      printInteractiveHelp()
+      rl.prompt()
+      return
+    }
+
+    if (input === "history") {
+      console.log(fmt.bold("\n검색 이력:"))
+      history.forEach((h, i) => console.log(fmt.dim(`  ${i + 1}. ${h}`)))
+      console.log()
+      rl.prompt()
+      return
+    }
+
+    if (input === "tools" || input === "list") {
+      printToolList()
+      rl.prompt()
+      return
+    }
+
+    if (input.startsWith("explain ")) {
+      const q = input.slice(8).trim()
+      console.log(fmt.dim(explainRoute(q)))
+      rl.prompt()
+      return
+    }
+
+    // 직접 도구 호출: @tool_name {...params}
+    if (input.startsWith("@")) {
+      await handleDirectCall(apiClient, input)
+      rl.prompt()
+      return
+    }
+
+    // 자연어 쿼리 실행
+    history.push(input)
+    console.log()
+
+    try {
+      await executeNaturalQuery(apiClient, input, false)
+    } catch (error) {
+      console.error(fmt.red(`오류: ${error instanceof Error ? error.message : String(error)}`))
+    }
+
+    console.log()
+    rl.prompt()
+  })
+
+  rl.on("close", () => {
+    process.exit(0)
+  })
+}
+
+async function handleDirectCall(apiClient: LawApiClient, input: string): Promise<void> {
+  // @tool_name {"key": "value"} or @tool_name key=value
+  const spaceIdx = input.indexOf(" ")
+  const toolName = spaceIdx > 0 ? input.slice(1, spaceIdx) : input.slice(1)
+  const paramStr = spaceIdx > 0 ? input.slice(spaceIdx + 1).trim() : ""
+
+  let params: Record<string, unknown> = {}
+  if (paramStr) {
+    try {
+      params = JSON.parse(paramStr)
+    } catch {
+      // key=value 형식 시도
+      for (const pair of paramStr.split(/\s+/)) {
+        const eqIdx = pair.indexOf("=")
+        if (eqIdx > 0) {
+          params[pair.slice(0, eqIdx)] = pair.slice(eqIdx + 1).replace(/^["']|["']$/g, "")
+        }
+      }
+    }
+  }
+
+  try {
+    const result = await executeTool(apiClient, toolName, params)
+    console.log(formatOutput(result.content.map(c => c.text).join("\n")))
+  } catch (error) {
+    console.error(fmt.red(`오류: ${error instanceof Error ? error.message : String(error)}`))
+  }
+}
+
+function printInteractiveHelp() {
+  console.log()
+  console.log(fmt.bold("  사용법:"))
+  console.log(`    ${fmt.cyan("자연어 입력")}       법령을 자연어로 검색 (자동 라우팅)`)
+  console.log(`    ${fmt.cyan("@도구명 {...}")}    특정 도구 직접 호출`)
+  console.log(`    ${fmt.cyan("explain <질의>")}   라우팅 경로 확인 (실행하지 않음)`)
+  console.log(`    ${fmt.cyan("tools / list")}     사용 가능한 도구 목록`)
+  console.log(`    ${fmt.cyan("history")}          검색 이력`)
+  console.log(`    ${fmt.cyan("exit / q")}         종료`)
+  console.log()
+  console.log(fmt.bold("  자연어 예시:"))
+  console.log(fmt.dim("    민법 제1조                    → 조문 직접 조회"))
+  console.log(fmt.dim("    음주운전 처벌 기준             → 종합 리서치"))
+  console.log(fmt.dim("    관세법 3단비교                 → 법체계 분석"))
+  console.log(fmt.dim("    건축허가 거부 판례             → 판례 검색"))
+  console.log(fmt.dim("    관세법 개정 이력               → 개정 추적"))
+  console.log(fmt.dim("    서울시 주차 조례               → 자치법규 검색"))
+  console.log(fmt.dim("    여권발급 절차 수수료            → 절차/비용 안내"))
+  console.log()
+}
+
+function printToolList() {
+  const grouped = new Map<string, McpTool[]>()
+  for (const tool of allTools) {
+    const cat = getCategory(tool)
+    if (!grouped.has(cat)) grouped.set(cat, [])
+    grouped.get(cat)!.push(tool)
+  }
+
+  console.log(`\n${fmt.bold(`  ${allTools.length}개 도구`)}\n`)
+  for (const [cat, catTools] of grouped) {
+    console.log(fmt.bold(`  ── ${cat} ──`))
+    for (const t of catTools) {
+      const desc = t.description.replace(/^\[.+?\]\s*/, "")
+      console.log(`    ${fmt.cyan(t.name.padEnd(35))} ${fmt.dim(desc)}`)
+    }
+    console.log()
+  }
+}
+
+// ────────────────────────────────────────
+// Program Setup
+// ────────────────────────────────────────
+
 function createProgram(): Command {
   const program = new Command()
     .name("korean-law")
-    .description("한국 법령 검색 CLI - 법제처 API 기반")
+    .description("한국 법령 검색 CLI - 자연어 한 줄로 모든 법령 조회")
     .version(VERSION)
+
+  // ── 자연어 쿼리 (기본 명령) ──
+  program
+    .command("query <question...>")
+    .alias("q")
+    .description("자연어로 법령 조회 (예: korean-law query 민법 제1조)")
+    .option("-v, --verbose", "라우팅 상세 정보 출력")
+    .option("--json", "JSON 형식으로 출력")
+    .action(async (words: string[], opts: { verbose?: boolean; json?: boolean }) => {
+      const apiClient = getApiClient()
+      const query = words.join(" ")
+
+      if (opts.json) {
+        const route = routeQuery(query)
+        try {
+          const result = await executeTool(apiClient, route.tool, route.params)
+          console.log(JSON.stringify({
+            query,
+            route: { tool: route.tool, reason: route.reason, params: route.params },
+            result: result.content.map(c => c.text).join("\n"),
+            isError: result.isError || false,
+          }, null, 2))
+        } catch (error) {
+          console.log(JSON.stringify({
+            query,
+            route: { tool: route.tool, reason: route.reason },
+            error: error instanceof Error ? error.message : String(error),
+          }, null, 2))
+          process.exit(1)
+        }
+        return
+      }
+
+      await executeNaturalQuery(apiClient, query, opts.verbose || false)
+    })
+
+  // ── 대화형 모드 ──
+  program
+    .command("interactive")
+    .alias("i")
+    .description("대화형 법령 검색 모드 (REPL)")
+    .action(async () => {
+      await runInteractive()
+    })
+
+  // ── explain (라우팅 경로 확인) ──
+  program
+    .command("explain <question...>")
+    .description("자연어 질의의 라우팅 경로 확인 (실행하지 않음)")
+    .action((words: string[]) => {
+      const query = words.join(" ")
+      console.log(explainRoute(query))
+    })
 
   // ── list 명령 ──
   program
     .command("list")
+    .alias("ls")
     .description("사용 가능한 도구 목록")
     .option("-c, --category <category>", "카테고리 필터 (예: 판례, 법령, 비교)")
     .option("--json", "JSON 형식으로 출력")
@@ -126,26 +482,12 @@ function createProgram(): Command {
         return
       }
 
-      // 카테고리별 그룹핑
-      const grouped = new Map<string, McpTool[]>()
-      for (const tool of tools) {
-        const cat = getCategory(tool)
-        if (!grouped.has(cat)) grouped.set(cat, [])
-        grouped.get(cat)!.push(tool)
-      }
-
-      console.log(`\n한국 법령 CLI - ${tools.length}개 도구\n`)
-      for (const [cat, catTools] of grouped) {
-        console.log(`── ${cat} ──`)
-        for (const t of catTools) {
-          const desc = t.description.replace(/^\[.+?\]\s*/, "")
-          console.log(`  ${t.name.padEnd(35)} ${desc}`)
-        }
-        console.log()
-      }
-
-      console.log("사용법: korean-law <도구명> [옵션]")
-      console.log("도움말: korean-law help <도구명>")
+      printBanner()
+      printToolList()
+      console.log(fmt.dim("  사용법: korean-law <도구명> [옵션]"))
+      console.log(fmt.dim("  자연어: korean-law query \"민법 제1조\""))
+      console.log(fmt.dim("  대화형: korean-law interactive"))
+      console.log()
     })
 
   // ── help <tool> 명령 ──
@@ -155,34 +497,35 @@ function createProgram(): Command {
     .action((toolName: string) => {
       const tool = allTools.find(t => t.name === toolName)
       if (!tool) {
-        console.error(`알 수 없는 도구: ${toolName}`)
-        console.error(`'korean-law list'로 사용 가능한 도구를 확인하세요.`)
+        console.error(fmt.red(`알 수 없는 도구: ${toolName}`))
+        console.error(fmt.dim(`'korean-law list'로 사용 가능한 도구를 확인하세요.`))
         process.exit(1)
       }
 
       const options = extractOptionsFromSchema(tool.schema)
 
-      console.log(`\n${tool.name}`)
-      console.log(`${"─".repeat(tool.name.length)}`)
+      console.log()
+      console.log(fmt.bold(tool.name))
+      console.log("─".repeat(tool.name.length))
       console.log(tool.description)
       console.log()
 
       if (options.length > 0) {
-        console.log("파라미터:")
+        console.log(fmt.bold("파라미터:"))
         for (const opt of options) {
-          const reqLabel = opt.required ? "(필수)" : "(선택)"
-          const defLabel = opt.defaultValue !== undefined ? ` [기본값: ${opt.defaultValue}]` : ""
-          console.log(`  --${opt.name.padEnd(20)} ${reqLabel} ${opt.description}${defLabel}`)
+          const reqLabel = opt.required ? fmt.red("(필수)") : fmt.dim("(선택)")
+          const defLabel = opt.defaultValue !== undefined ? fmt.dim(` [기본값: ${opt.defaultValue}]`) : ""
+          console.log(`  --${fmt.cyan(opt.name.padEnd(20))} ${reqLabel} ${opt.description}${defLabel}`)
         }
         console.log()
       }
 
-      // 사용 예시
       const example = options
         .filter(o => o.required && o.name !== "apiKey")
         .map(o => `--${o.name} "<값>"`)
         .join(" ")
-      console.log(`예시: korean-law ${tool.name} ${example}`)
+      console.log(fmt.dim(`예시: korean-law ${tool.name} ${example}`))
+      console.log()
     })
 
   // ── 도구를 동적으로 서브커맨드 등록 ──
@@ -209,27 +552,25 @@ function createProgram(): Command {
       }
     }
 
-    // --json-input으로 복잡한 입력 지원
     cmd.option("--json-input <json>", "JSON 문자열로 전체 파라미터 전달")
 
     cmd.action(async (cmdOpts: Record<string, string>) => {
       const apiKey = cmdOpts.apiKey || process.env.LAW_OC || ""
       if (!apiKey) {
-        console.error("LAW_OC 환경변수 또는 --apiKey 옵션이 필요합니다.")
-        console.error("API 키 발급: https://open.law.go.kr/LSO/openApi/guideResult.do")
+        console.error(fmt.red("LAW_OC 환경변수 또는 --apiKey 옵션이 필요합니다."))
+        console.error(fmt.dim("API 키 발급: https://open.law.go.kr/LSO/openApi/guideResult.do"))
         process.exit(1)
       }
 
       const apiClient = new LawApiClient({ apiKey })
 
-      // 입력 파라미터 구성
       let input: Record<string, unknown>
 
       if (cmdOpts.jsonInput) {
         try {
           input = JSON.parse(cmdOpts.jsonInput)
         } catch {
-          console.error("--json-input 파싱 실패: 유효한 JSON을 입력하세요.")
+          console.error(fmt.red("--json-input 파싱 실패: 유효한 JSON을 입력하세요."))
           process.exit(1)
         }
       } else {
@@ -247,7 +588,7 @@ function createProgram(): Command {
         const result = await tool.handler(apiClient, parsed)
 
         for (const c of result.content) {
-          console.log(c.text)
+          console.log(formatOutput(c.text))
         }
 
         if (result.isError) {
@@ -255,23 +596,62 @@ function createProgram(): Command {
         }
       } catch (error) {
         if (error instanceof z.ZodError) {
-          console.error("입력 검증 실패:")
+          console.error(fmt.red("입력 검증 실패:"))
           for (const issue of error.issues) {
             console.error(`  ${issue.path.join(".")}: ${issue.message}`)
           }
-          console.error(`\n'korean-law help ${tool.name}'으로 파라미터를 확인하세요.`)
+          console.error(fmt.dim(`\n'korean-law help ${tool.name}'으로 파라미터를 확인하세요.`))
         } else {
-          console.error(error instanceof Error ? error.message : String(error))
+          console.error(fmt.red(error instanceof Error ? error.message : String(error)))
         }
         process.exit(1)
       }
     })
   }
 
+  // ── 기본 동작: 인자가 도구명이 아니면 자연어 쿼리로 처리 ──
+  program.on("command:*", async (operands: string[]) => {
+    // 등록되지 않은 명령이면 자연어 쿼리로 처리
+    const query = operands.join(" ")
+    const apiClient = getApiClient()
+    await executeNaturalQuery(apiClient, query, false)
+  })
+
   return program
 }
 
-createProgram().parseAsync(process.argv).catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error))
+// ────────────────────────────────────────
+// Entry Point
+// ────────────────────────────────────────
+
+async function main() {
+  const args = process.argv.slice(2)
+
+  // 인자가 없으면 대화형 모드
+  if (args.length === 0) {
+    await runInteractive()
+    return
+  }
+
+  // 인자가 있는데 등록된 명령이 아니고, '-'로 시작하지 않으면 자연어 쿼리
+  const knownCommands = new Set([
+    "query", "q", "interactive", "i", "explain", "list", "ls", "help",
+    ...allTools.map(t => t.name),
+  ])
+
+  const firstArg = args[0]
+  if (!knownCommands.has(firstArg) && !firstArg.startsWith("-")) {
+    // 전체 인자를 자연어 쿼리로 처리
+    const apiClient = getApiClient()
+    const query = args.join(" ")
+    await executeNaturalQuery(apiClient, query, args.includes("--verbose") || args.includes("-v"))
+    return
+  }
+
+  await createProgram().parseAsync(process.argv)
+}
+
+main().catch((error) => {
+  console.error(fmt.red(error instanceof Error ? error.message : String(error)))
   process.exit(1)
 })
