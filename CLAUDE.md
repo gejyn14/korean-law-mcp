@@ -1,17 +1,18 @@
 # CLAUDE.md
 
-Korean Law MCP Server - 법제처 API 기반 MCP 서버 (64개 도구)
+Korean Law MCP Server v2.0 - 법제처 API 기반 MCP 서버 (64개 도구) + 자연어 CLI
 
 ## Structure
 
 ```
 src/
 ├── index.ts              # 엔트리포인트 (STDIO/HTTP 모드)
-├── cli.ts                # CLI 인터페이스
+├── cli.ts                # CLI v2.0 (자연어 라우팅 + REPL)
 ├── tool-registry.ts      # 64개 도구 등록
 ├── tools/                # 도구 구현 (40개 파일, 각 200줄 미만)
 ├── lib/
 │   ├── api-client.ts     # API 클라이언트
+│   ├── query-router.ts   # 자연어 → 도구 라우팅 엔진
 │   ├── fetch-with-retry.ts  # 타임아웃/재시도
 │   ├── session-state.ts  # 세션별 API 키 관리
 │   ├── xml-parser.ts     # 공통 XML 파싱
@@ -35,7 +36,26 @@ src/
 npm install           # 의존성 설치
 npm run build         # TypeScript 빌드
 npm run watch         # 개발 모드
-LAW_OC=키 node build/index.js  # 로컬 실행
+LAW_OC=키 node build/index.js  # MCP 서버 실행
+```
+
+## CLI Usage (v2.0)
+
+```bash
+# 자연어 한 줄로 법령 조회
+korean-law "민법 제1조"                    # 조문 직접 조회
+korean-law "음주운전 처벌 기준"             # 종합 리서치 자동 실행
+korean-law "관세법 3단비교"                 # 법체계 분석
+korean-law "건축허가 거부 판례"             # 판례 검색
+korean-law "서울시 주차 조례"               # 자치법규 검색
+
+# 대화형 모드
+korean-law                                 # REPL 모드 진입
+korean-law interactive                     # 명시적 REPL 모드
+
+# 기존 방식 (직접 도구 호출)
+korean-law search_law --query "민법"
+korean-law get_law_text --mst 160001 --jo "제1조"
 ```
 
 ## Environment
@@ -80,6 +100,8 @@ get_law_text(mst, jo="006300") → 제63조(휴직) 조회
 
 | 파일 | 역할 |
 |------|------|
+| `cli.ts` | CLI v2.0 — 자연어 라우팅 + REPL |
+| `lib/query-router.ts` | 자연어 → 도구 자동 라우팅 엔진 |
 | `tool-registry.ts` | 64개 도구 정의 및 등록 |
 | `lib/fetch-with-retry.ts` | 30초 타임아웃, 3회 재시도 |
 | `lib/session-state.ts` | 멀티세션 API 키 격리 |
