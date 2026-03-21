@@ -5,6 +5,7 @@
 import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
+import { truncateResponse } from "../lib/schemas.js"
 
 export const CompareOldNewSchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
@@ -115,7 +116,7 @@ export async function compareOldNew(
     return {
       content: [{
         type: "text",
-        text: resultText
+        text: truncateResponse(resultText)
       }]
     }
   } catch (error) {

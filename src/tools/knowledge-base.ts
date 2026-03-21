@@ -385,8 +385,8 @@ export async function getRelatedLaws(
     const extraParams: Record<string, string> = {
       display: (args.display || 20).toString(),
     };
-    if (args.lawId) extraParams.ID = args.lawId;
-    if (args.lawName) extraParams.query = args.lawName;
+    if (args.lawId) extraParams.ID = String(args.lawId);
+    if (args.lawName) extraParams.query = String(args.lawName);
 
     let xmlText: string;
     try {

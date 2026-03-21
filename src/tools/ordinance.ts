@@ -5,6 +5,7 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { cleanHtml } from "../lib/article-parser.js"
+import { truncateResponse } from "../lib/schemas.js"
 
 export const GetOrdinanceSchema = z.object({
   ordinSeq: z.string().describe("자치법규 일련번호"),
@@ -92,7 +93,7 @@ export async function getOrdinance(
     return {
       content: [{
         type: "text",
-        text: resultText
+        text: truncateResponse(resultText)
       }]
     }
   } catch (error) {

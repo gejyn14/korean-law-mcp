@@ -115,9 +115,9 @@ export async function getEnglishLawText(
     }
 
     const extraParams: Record<string, string> = {};
-    if (args.lawId) extraParams.ID = args.lawId;
-    if (args.mst) extraParams.MST = args.mst;
-    if (args.lawName) extraParams.LM = args.lawName;
+    if (args.lawId) extraParams.ID = String(args.lawId);
+    if (args.mst) extraParams.MST = String(args.mst);
+    if (args.lawName) extraParams.LM = String(args.lawName);
 
     const responseText = await apiClient.fetchApi({
       endpoint: "lawService.do",

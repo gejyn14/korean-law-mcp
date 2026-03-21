@@ -90,17 +90,21 @@ export async function startSSEServer(server: Server, port: number) {
         transport = transports[sessionId].transport
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // 새 세션 초기화
+        // 세션 수 제한 — transport 생성 전에 체크하여 리소스 누수 방지
+        if (Object.keys(transports).length >= MAX_SESSIONS) {
+          res.status(503).json({
+            jsonrpc: "2.0",
+            error: { code: -32000, message: `Max sessions (${MAX_SESSIONS}) reached. Try again later.` },
+            id: null,
+          })
+          return
+        }
+
         const eventStore = new InMemoryEventStore()
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           eventStore,
           onsessioninitialized: (newSessionId) => {
-            // 세션 수 제한
-            if (Object.keys(transports).length >= MAX_SESSIONS) {
-              console.error(`Max sessions (${MAX_SESSIONS}) reached, rejecting new session`)
-              return
-            }
-            console.error(`Session initialized: ${newSessionId}`)
             transports[newSessionId] = { transport, lastAccess: Date.now() } as any
           }
         })

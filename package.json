@@ -4,6 +4,25 @@
   "description": "국가법령정보센터 API 기반 MCP 서버 - 한국 법령 조회·비교 도구",
   "type": "module",
   "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js"
+    },
+    "./lib/*": {
+      "types": "./build/lib/*.d.ts",
+      "import": "./build/lib/*.js"
+    },
+    "./tools/*": {
+      "types": "./build/tools/*.d.ts",
+      "import": "./build/tools/*.js"
+    },
+    "./server/*": {
+      "types": "./build/server/*.d.ts",
+      "import": "./build/server/*.js"
+    }
+  },
   "bin": {
     "korean-law-mcp": "build/index.js",
     "korean-law": "build/cli.js"
