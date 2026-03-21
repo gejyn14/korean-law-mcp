@@ -87,10 +87,10 @@ export class LawApiClient {
       type: "JSON",
     })
 
-    if (params.mst) apiParams.append("MST", params.mst)
-    if (params.lawId) apiParams.append("ID", params.lawId)
-    if (params.jo) apiParams.append("JO", params.jo)
-    if (params.efYd) apiParams.append("efYd", params.efYd)
+    if (params.mst) apiParams.append("MST", String(params.mst))
+    if (params.lawId) apiParams.append("ID", String(params.lawId))
+    if (params.jo) apiParams.append("JO", String(params.jo))
+    if (params.efYd) apiParams.append("efYd", String(params.efYd))
 
     const url = `${LAW_API_BASE}/lawService.do?${apiParams.toString()}`
     const response = await fetchWithRetry(url)
@@ -140,10 +140,10 @@ export class LawApiClient {
       type: "XML",
     })
 
-    if (params.mst) apiParams.append("MST", params.mst)
-    if (params.lawId) apiParams.append("ID", params.lawId)
-    if (params.ld) apiParams.append("LD", params.ld)
-    if (params.ln) apiParams.append("LN", params.ln)
+    if (params.mst) apiParams.append("MST", String(params.mst))
+    if (params.lawId) apiParams.append("ID", String(params.lawId))
+    if (params.ld) apiParams.append("LD", String(params.ld))
+    if (params.ln) apiParams.append("LN", String(params.ln))
 
     const url = `${LAW_API_BASE}/lawService.do?${apiParams.toString()}`
     const response = await fetchWithRetry(url)
@@ -168,8 +168,8 @@ export class LawApiClient {
       knd: params.knd || "2",
     })
 
-    if (params.mst) apiParams.append("MST", params.mst)
-    if (params.lawId) apiParams.append("ID", params.lawId)
+    if (params.mst) apiParams.append("MST", String(params.mst))
+    if (params.lawId) apiParams.append("ID", String(params.lawId))
 
     const url = `${LAW_API_BASE}/lawService.do?${apiParams.toString()}`
     const response = await fetchWithRetry(url)
@@ -349,12 +349,12 @@ export class LawApiClient {
       type: "XML",
     })
 
-    if (params.lawId) apiParams.append("ID", params.lawId)
-    if (params.jo) apiParams.append("JO", params.jo)
-    if (params.regDt) apiParams.append("regDt", params.regDt)
-    if (params.fromRegDt) apiParams.append("fromRegDt", params.fromRegDt)
-    if (params.toRegDt) apiParams.append("toRegDt", params.toRegDt)
-    if (params.org) apiParams.append("org", params.org)
+    if (params.lawId) apiParams.append("ID", String(params.lawId))
+    if (params.jo) apiParams.append("JO", String(params.jo))
+    if (params.regDt) apiParams.append("regDt", String(params.regDt))
+    if (params.fromRegDt) apiParams.append("fromRegDt", String(params.fromRegDt))
+    if (params.toRegDt) apiParams.append("toRegDt", String(params.toRegDt))
+    if (params.org) apiParams.append("org", String(params.org))
     if (params.page) apiParams.append("page", params.page.toString())
 
     const url = `${LAW_API_BASE}/lawSearch.do?${apiParams.toString()}`
@@ -382,7 +382,7 @@ export class LawApiClient {
 
     if (params.extraParams) {
       for (const [key, value] of Object.entries(params.extraParams)) {
-        apiParams.append(key, value)
+        apiParams.append(key, String(value))
       }
     }
 

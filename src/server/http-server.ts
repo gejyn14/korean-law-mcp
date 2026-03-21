@@ -37,7 +37,7 @@ export async function startHTTPServer(server: Server, port: number) {
         deleteSession(sessionId)
       }
     }
-  }, 5 * 60 * 1000)
+  }, 5 * 60 * 1000).unref()
 
   // Rate Limiting (RATE_LIMIT_RPM 환경변수, 기본: 60 req/min per IP)
   const rateLimitRpm = parseInt(process.env.RATE_LIMIT_RPM || "60", 10)
@@ -71,7 +71,7 @@ export async function startHTTPServer(server: Server, port: number) {
       for (const [ip, bucket] of rateBuckets) {
         if (now >= bucket.resetAt) rateBuckets.delete(ip)
       }
-    }, 5 * 60 * 1000)
+    }, 5 * 60 * 1000).unref()
   }
 
   // CORS 및 보안 헤더 설정

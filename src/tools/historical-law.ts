@@ -143,8 +143,9 @@ export async function getHistoricalLaw(
     output += `  소관부처: ${basic.소관부처명 || basic.소관부처 || "N/A"}\n\n`;
 
     // Extract articles
-    const articles = law.조문 || [];
-    if (Array.isArray(articles) && articles.length > 0) {
+    const rawArticles = law.조문;
+    const articles = rawArticles == null ? [] : Array.isArray(rawArticles) ? rawArticles : [rawArticles];
+    if (articles.length > 0) {
       if (args.jo) {
         // Filter to specific article
         const joCode = parseJoNumber(args.jo);

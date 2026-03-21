@@ -22,9 +22,9 @@ export async function getLawSystemTree(
     }
 
     const extraParams: Record<string, string> = {};
-    if (args.lawId) extraParams.ID = args.lawId;
-    if (args.mst) extraParams.MST = args.mst;
-    if (args.lawName) extraParams.LM = args.lawName;
+    if (args.lawId) extraParams.ID = String(args.lawId);
+    if (args.mst) extraParams.MST = String(args.mst);
+    if (args.lawName) extraParams.LM = String(args.lawName);
 
     const responseText = await apiClient.fetchApi({
       endpoint: "lawService.do",
@@ -60,7 +60,7 @@ export async function getLawSystemTree(
     output += `  법령구분: ${lawType}\n`;
     output += `  제개정: ${revision}\n`;
     output += `  시행일자: ${formatDateDot(basicInfo.시행일자)}\n`;
-    output += `  공포일자: ${formatDateDot(basicInfo.공포일자)} (제${basicInfo.공포번호}호)\n\n`;
+    output += `  공포일자: ${formatDateDot(basicInfo.공포일자)}${basicInfo.공포번호 ? ` (제${basicInfo.공포번호}호)` : ""}\n\n`;
 
     // Law hierarchy (상하위법)
     output += `📊 법령 체계:\n\n`;

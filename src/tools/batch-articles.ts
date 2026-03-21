@@ -70,7 +70,7 @@ async function fetchArticlesForLaw(
   efYd?: string,
   apiKey?: string
 ): Promise<FetchResult> {
-  const cacheKey = `lawtext:${lawReq.mst || lawReq.lawId}:full:${efYd || 'current'}`
+  const cacheKey = `batch:${lawReq.mst || lawReq.lawId}:full:${efYd || 'current'}`
   let fullLawData: LawResponse
 
   const cached = lawCache.get<LawResponse>(cacheKey)

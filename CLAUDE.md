@@ -100,6 +100,8 @@ get_law_text(mst, jo="006300") → 제63조(휴직) 조회
 6. **단일 객체 정규화**: API 응답의 배열 필드가 단일 객체로 올 수 있음 — `Array.isArray(x) ? x : [x]` 패턴 사용
 7. **cleanHtml 재사용**: HTML 엔티티 디코딩은 `article-parser.ts`의 `cleanHtml()` 사용 (수동 디코딩 금지)
 8. **console.log/error 금지**: STDIO 모드에서 간섭 방지. 에러는 throw로 전파
+9. **String() 방어 코딩**: MCP 클라이언트가 숫자를 보낼 수 있음 — `URLSearchParams.append(key, String(value))` 사용
+10. **캐시 키 분리**: `lawtext:` (law-text.ts, 문자열), `batch:` (batch-articles.ts, JSON 객체) — 타입 충돌 금지
 
 ## Key Files
 
@@ -112,6 +114,8 @@ get_law_text(mst, jo="006300") → 제63조(휴직) 조회
 | `lib/session-state.ts` | 멀티세션 API 키 격리 |
 | `lib/xml-parser.ts` | 6개 도메인별 XML 파서 |
 | `lib/annex-file-parser.ts` | HWPX/HWP/PDF 별표 파싱 (매직바이트 감지) |
+| `lib/hwpx-parser.ts` | HWPX 파서 (manifest 멀티섹션, colSpan/rowSpan) |
+| `lib/hwp5-parser.ts` | HWP5 파서 (OLE2/cfb 직접 파싱) |
 | `lib/pdf-parser.ts` | PDF 텍스트 추출 (pdfjs-dist, 테이블 복원) |
 | `lib/article-parser.ts` | 조문 파서 (cleanHtml, extractHangContent) |
 

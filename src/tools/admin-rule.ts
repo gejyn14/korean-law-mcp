@@ -5,6 +5,7 @@
 import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
+import { truncateResponse } from "../lib/schemas.js"
 
 // search_admin_rule 스키마
 export const SearchAdminRuleSchema = z.object({
@@ -81,7 +82,7 @@ export async function searchAdminRule(
     return {
       content: [{
         type: "text",
-        text: resultText
+        text: truncateResponse(resultText)
       }]
     }
   } catch (error) {
@@ -143,7 +144,7 @@ export async function getAdminRule(
         return {
           content: [{
             type: "text",
-            text: resultText
+            text: truncateResponse(resultText)
           }]
         }
       }
@@ -187,7 +188,7 @@ export async function getAdminRule(
       return {
         content: [{
           type: "text",
-          text: resultText
+          text: truncateResponse(resultText)
         }]
       }
     }
@@ -233,7 +234,7 @@ export async function getAdminRule(
     return {
       content: [{
         type: "text",
-        text: resultText
+        text: truncateResponse(resultText)
       }]
     }
   } catch (error) {

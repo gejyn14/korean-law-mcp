@@ -37,13 +37,18 @@ export async function getAnnexes(
       v == null ? [] : Array.isArray(v) ? v : [v]
 
     const parseAnnexResponse = (jsonText: string): { list: any[], type: string } => {
-      const json = JSON.parse(jsonText)
-      const adminResult = json?.admRulBylSearch
-      const licResult = json?.licBylSearch
-      if (adminResult?.admbyl) return { list: toArray(adminResult.admbyl), type: "admin" }
-      if (licResult?.ordinbyl) return { list: toArray(licResult.ordinbyl), type: "ordinance" }
-      if (licResult?.licbyl) return { list: toArray(licResult.licbyl), type: "law" }
-      return { list: [], type: "law" }
+      try {
+        const json = JSON.parse(jsonText)
+        const adminResult = json?.admRulBylSearch
+        const licResult = json?.licBylSearch
+        if (adminResult?.admbyl) return { list: toArray(adminResult.admbyl), type: "admin" }
+        if (licResult?.ordinbyl) return { list: toArray(licResult.ordinbyl), type: "ordinance" }
+        if (licResult?.licbyl) return { list: toArray(licResult.licbyl), type: "law" }
+        return { list: [], type: "law" }
+      } catch {
+        // JSON 파싱 실패 (HTML 에러 페이지 등) → 빈 배열 반환하여 fallback 진행
+        return { list: [], type: "law" }
+      }
     }
 
     // 1차: 원래 법령명 + knd 필터
@@ -76,6 +81,30 @@ export async function getAnnexes(
         })
         annexList = filtered.length > 0 ? filtered : result3.list
         lawType = result3.type
+      }
+    }
+
+    // 4차: "규정" 타입은 licbyl과 admbyl 양쪽에 존재 가능 → admin fallback
+    if (annexList.length === 0 && /규정/.test(normalizedLawName)) {
+      try {
+        const adminText = await apiClient.fetchApi({
+          endpoint: "lawSearch.do",
+          target: "admbyl",
+          type: "JSON",
+          extraParams: {
+            query: normalizedLawName,
+            search: "2",
+            display: "100",
+          },
+          apiKey: input.apiKey,
+        })
+        const result4 = parseAnnexResponse(adminText)
+        if (result4.list.length > 0) {
+          annexList = result4.list
+          lawType = "admin"
+        }
+      } catch {
+        // admin fallback 실패 → 무시하고 진행
       }
     }
 
