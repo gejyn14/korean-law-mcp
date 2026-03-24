@@ -16,7 +16,7 @@ export const AdvancedSearchSchema = z.object({
   org: z.string().optional().describe("소관부처코드"),
   operator: z.enum(["AND", "OR"]).optional().default("AND").describe("키워드 결합 연산자"),
   display: z.number().optional().default(20).describe("최대 결과 개수"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type AdvancedSearchInput = z.infer<typeof AdvancedSearchSchema>

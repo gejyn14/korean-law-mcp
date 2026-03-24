@@ -10,7 +10,7 @@ import { truncateResponse } from "../lib/schemas.js"
 export const ExtractKeywordsSchema = z.object({
   id: z.string().describe("판례일련번호"),
   maxKeywords: z.number().optional().default(10).describe("최대 키워드 개수 (기본값: 10)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type ExtractKeywordsInput = z.infer<typeof ExtractKeywordsSchema>

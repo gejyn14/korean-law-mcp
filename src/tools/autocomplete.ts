@@ -9,7 +9,7 @@ import { searchLaw } from "./search.js"
 
 export const SuggestLawNamesSchema = z.object({
   partial: z.string().describe("부분 입력된 법령명 (예: '관세', '환경')"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type SuggestLawNamesInput = z.infer<typeof SuggestLawNamesSchema>

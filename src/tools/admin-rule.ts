@@ -12,7 +12,7 @@ export const SearchAdminRuleSchema = z.object({
   query: z.string().describe("검색할 행정규칙명"),
   knd: z.string().optional().describe("행정규칙 종류 (1=훈령, 2=예규, 3=고시, 4=공고, 5=일반)"),
   display: z.number().optional().default(20).describe("최대 결과 개수"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type SearchAdminRuleInput = z.infer<typeof SearchAdminRuleSchema>
@@ -99,7 +99,7 @@ export async function searchAdminRule(
 // get_admin_rule 스키마
 export const GetAdminRuleSchema = z.object({
   id: z.string().describe("행정규칙ID (search_admin_rule에서 획득)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type GetAdminRuleInput = z.infer<typeof GetAdminRuleSchema>

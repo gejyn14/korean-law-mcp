@@ -10,7 +10,7 @@ const baseSearchSchemaOptionalQuery = {
   page: z.number().min(1).default(1).describe("페이지 번호 (기본값: 1)"),
   sort: z.enum(["lasc", "ldes", "dasc", "ddes"]).optional()
     .describe("정렬 옵션: lasc/ldes (법령명순), dasc/ddes (날짜순)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 };
 
 // Common schema for committee decision search (query required)
@@ -19,12 +19,12 @@ const baseSearchSchemaRequiredQuery = {
   page: z.number().min(1).default(1).describe("페이지 번호 (기본값: 1)"),
   sort: z.enum(["lasc", "ldes", "dasc", "ddes"]).optional()
     .describe("정렬 옵션: lasc/ldes (법령명순), dasc/ddes (날짜순)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 };
 
 const baseTextSchema = {
   id: z.string().describe("결정문 일련번호 (검색 결과에서 획득)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 };
 
 // ========================================

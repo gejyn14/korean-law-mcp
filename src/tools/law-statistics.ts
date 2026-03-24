@@ -10,7 +10,7 @@ import { truncateResponse } from "../lib/schemas.js"
 export const LawStatisticsSchema = z.object({
   days: z.number().min(1).max(90).optional().default(30).describe("최근 변경 분석 기간 (일 단위, 기본값: 30, 최대: 90)"),
   limit: z.number().optional().default(10).describe("결과 개수 제한 (기본값: 10)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type LawStatisticsInput = z.infer<typeof LawStatisticsSchema>

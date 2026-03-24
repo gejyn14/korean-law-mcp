@@ -24,7 +24,7 @@ export const GetBatchArticlesSchema = z.object({
   lawId: z.string().optional().describe("법령ID (단일 법령 조회 시)"),
   articles: z.array(z.string()).optional().describe("조문 번호 배열 (단일 법령 조회 시, 예: ['제38조', '제39조'])"),
   efYd: z.string().optional().describe("시행일자 (YYYYMMDD 형식)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
   laws: z.array(LawEntrySchema).optional().describe(
     "복수 법령 조문 일괄 조회 (예: [{mst:'123', articles:['제1조','제2조']}, {lawId:'456', articles:['제3조']}])"
   ),

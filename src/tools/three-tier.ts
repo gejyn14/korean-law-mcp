@@ -12,7 +12,7 @@ export const GetThreeTierSchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
   lawId: z.string().optional().describe("법령ID"),
   knd: z.enum(["1", "2"]).optional().default("2").describe("1=인용조문, 2=위임조문 (기본값)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 }).refine(data => data.mst || data.lawId, {
   message: "mst 또는 lawId 중 하나는 필수입니다"
 })

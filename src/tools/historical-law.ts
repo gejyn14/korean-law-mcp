@@ -21,7 +21,7 @@ export interface LawHistoryEntry {
 export const searchHistoricalLawSchema = z.object({
   lawName: z.string().describe("법령명 (예: '관세법', '민법', '형법')"),
   display: z.number().min(1).max(100).default(50).describe("결과 개수 (기본값: 50)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type SearchHistoricalLawInput = z.infer<typeof searchHistoricalLawSchema>;
@@ -100,7 +100,7 @@ export async function searchHistoricalLaw(
 export const getHistoricalLawSchema = z.object({
   mst: z.string().describe("법령일련번호 (MST) - search_historical_law에서 획득"),
   jo: z.string().optional().describe("특정 조문 번호 (예: '제38조')"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetHistoricalLawInput = z.infer<typeof getHistoricalLawSchema>;

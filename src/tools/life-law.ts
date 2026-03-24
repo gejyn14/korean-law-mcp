@@ -15,7 +15,7 @@ export const searchAiLawSchema = z.object({
   lawTypes: z.array(z.string()).optional().describe(
     "법령종류 필터 (예: ['법률', '대통령령', '총리령,부령']). 지정 시 해당 종류만 반환."
   ),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type SearchAiLawInput = z.infer<typeof searchAiLawSchema>;

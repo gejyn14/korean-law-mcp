@@ -10,7 +10,7 @@ import { truncateResponse } from "../lib/schemas.js"
 export const SummarizePrecedentSchema = z.object({
   id: z.string().describe("판례일련번호"),
   maxLength: z.number().optional().default(500).describe("요약 최대 길이 (기본값: 500자)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type SummarizePrecedentInput = z.infer<typeof SummarizePrecedentSchema>

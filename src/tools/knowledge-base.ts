@@ -15,7 +15,7 @@ export const getLegalTermKBSchema = z.object({
   query: z.string().describe("검색할 법령용어"),
   display: z.number().min(1).max(100).default(20).describe("결과 수 (기본:20)"),
   page: z.number().min(1).default(1).describe("페이지 (기본:1)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetLegalTermKBInput = z.infer<typeof getLegalTermKBSchema>;
@@ -76,7 +76,7 @@ export async function getLegalTermKB(
 // 2. 법령용어 상세 조회 (lstrm 본문)
 export const getLegalTermDetailSchema = z.object({
   query: z.string().describe("조회할 법령용어명"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetLegalTermDetailInput = z.infer<typeof getLegalTermDetailSchema>;
@@ -136,7 +136,7 @@ export const getDailyTermSchema = z.object({
   query: z.string().describe("검색할 일상용어 (예: '월세', '전세', '뺑소니')"),
   display: z.number().min(1).max(100).default(20).describe("결과 수 (기본:20)"),
   page: z.number().min(1).default(1).describe("페이지 (기본:1)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetDailyTermInput = z.infer<typeof getDailyTermSchema>;
@@ -195,7 +195,7 @@ export async function getDailyTerm(
 // 4. 일상용어 → 법령용어 연계
 export const getDailyToLegalSchema = z.object({
   dailyTerm: z.string().describe("일상용어 (예: '월세' → '임대차')"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetDailyToLegalInput = z.infer<typeof getDailyToLegalSchema>;
@@ -244,7 +244,7 @@ export async function getDailyToLegal(
 // 5. 법령용어 → 일상용어 연계
 export const getLegalToDailySchema = z.object({
   legalTerm: z.string().describe("법령용어 (예: '임대차' → '월세', '전세')"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetLegalToDailyInput = z.infer<typeof getLegalToDailySchema>;
@@ -294,7 +294,7 @@ export async function getLegalToDaily(
 export const getTermArticlesSchema = z.object({
   term: z.string().describe("검색할 법령용어"),
   display: z.number().min(1).max(100).default(20).describe("결과 수 (기본:20)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetTermArticlesInput = z.infer<typeof getTermArticlesSchema>;
@@ -368,7 +368,7 @@ export const getRelatedLawsSchema = z.object({
   lawId: z.string().optional().describe("법령ID"),
   lawName: z.string().optional().describe("법령명"),
   display: z.number().min(1).max(100).default(20).describe("결과 수 (기본:20)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type GetRelatedLawsInput = z.infer<typeof getRelatedLawsSchema>;

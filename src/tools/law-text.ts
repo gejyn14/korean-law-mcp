@@ -15,7 +15,7 @@ export const GetLawTextSchema = z.object({
   lawId: z.string().optional().describe("법령ID (search_law에서 획득)"),
   jo: z.string().optional().describe("조문 번호 (예: '제38조' 또는 '003800')"),
   efYd: z.string().optional().describe("시행일자 (YYYYMMDD 형식)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 }).refine(data => data.mst || data.lawId, {
   message: "mst 또는 lawId 중 하나는 필수입니다"
 })

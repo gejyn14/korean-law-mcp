@@ -33,7 +33,7 @@ export const ArticleHistorySchema = z.object({
   toRegDt: z.string().regex(/^\d{8}$/, "YYYYMMDD 형식").optional().describe("조회기간 종료일 (YYYYMMDD, 예: '20241231')"),
   org: z.string().optional().describe("소관부처코드 (선택)"),
   page: z.number().optional().default(1).describe("페이지 번호 (기본값: 1)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 }).refine(
   data => data.lawId || data.lawName,
   { message: "lawId 또는 lawName 중 하나는 필수입니다" }

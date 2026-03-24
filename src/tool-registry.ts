@@ -488,9 +488,7 @@ function toMcpInputSchema(schema: unknown) {
   const rawSchema = z.toJSONSchema(schema as z.ZodType) as any
 
   if (rawSchema?.type === "object" && rawSchema?.properties) {
-    // apiKey는 LLM이 사용할 필요 없는 내부 파라미터 — 토큰 절약을 위해 제거
     const props = { ...rawSchema.properties }
-    delete props.apiKey
     const required = Array.isArray(rawSchema.required)
       ? rawSchema.required.filter((k: string) => k !== "apiKey")
       : []

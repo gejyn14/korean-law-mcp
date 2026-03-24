@@ -10,7 +10,7 @@ import { extractTag } from "../lib/xml-parser.js"
 export const SearchOrdinanceSchema = z.object({
   query: z.string().describe("검색할 자치법규명 (예: '서울', '환경')"),
   display: z.number().min(1).max(100).default(20).describe("페이지당 결과 개수 (기본값: 20, 최대: 100)"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type SearchOrdinanceInput = z.infer<typeof SearchOrdinanceSchema>

@@ -9,7 +9,7 @@ import { truncateResponse } from "../lib/schemas.js"
 
 export const GetOrdinanceSchema = z.object({
   ordinSeq: z.string().describe("자치법규 일련번호"),
-  apiKey: z.string().optional().describe("API 키")
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달")
 })
 
 export type GetOrdinanceInput = z.infer<typeof GetOrdinanceSchema>

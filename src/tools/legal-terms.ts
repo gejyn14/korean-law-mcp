@@ -8,7 +8,7 @@ export const searchLegalTermsSchema = z.object({
   query: z.string().describe("검색할 법령용어 (예: '선의', '악의', '하자', '채권')"),
   display: z.number().min(1).max(100).default(20).describe("페이지당 결과 개수 (기본값: 20, 최대: 100)"),
   page: z.number().min(1).default(1).describe("페이지 번호 (기본값: 1)"),
-  apiKey: z.string().optional().describe("API 키"),
+  apiKey: z.string().optional().describe("법제처 Open API 인증키(OC). 사용자가 제공한 경우 전달"),
 });
 
 export type SearchLegalTermsInput = z.infer<typeof searchLegalTermsSchema>;
