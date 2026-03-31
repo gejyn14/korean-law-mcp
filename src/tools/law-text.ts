@@ -7,6 +7,7 @@ import type { LawApiClient } from "../lib/api-client.js"
 import { buildJO } from "../lib/law-parser.js"
 import { lawCache } from "../lib/cache.js"
 import { flattenContent, extractHangContent, cleanHtml } from "../lib/article-parser.js"
+import { formatToolError } from "../lib/errors.js"
 
 import { MAX_RESPONSE_SIZE } from "../lib/schemas.js"
 
@@ -321,12 +322,6 @@ export async function getLawText(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_law_text")
   }
 }

@@ -7,6 +7,24 @@ import type { LawApiClient } from "../lib/api-client.js"
 import { fetchWithRetry } from "../lib/fetch-with-retry.js"
 import { parseAnnexFile } from "../lib/annex-file-parser.js"
 import { truncateResponse, MAX_RESPONSE_SIZE } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
+
+/** 법제처 별표/서식 API 응답 개별 항목 */
+interface AnnexItem {
+  별표번호?: string
+  별표명?: string
+  별표종류?: string
+  별표서식파일링크?: string
+  별표서식PDF파일링크?: string
+  별표파일링크?: string
+  관련법령명?: string
+  관련자치법규명?: string
+  관련행정규칙명?: string
+  자치법규시행일자?: string
+  공포일자?: string
+  소관부처?: string
+  지자체기관명?: string
+}
 
 const LAW_BASE_URL = "https://www.law.go.kr"
 
@@ -29,14 +47,14 @@ export async function getAnnexes(
     const normalizedLawName = parsedLawInput.normalizedLawName || input.lawName
     const annexSelector = (input.bylSeq || input.annexNo || parsedLawInput.annexNo || "").trim()
 
-    let annexList: any[] = []
+    let annexList: AnnexItem[] = []
     let lawType: string = "law"
 
     // 법제처 API는 결과 1건일 때 배열 대신 단일 객체를 반환하므로 정규화
-    const toArray = (v: unknown): any[] =>
+    const toArray = (v: unknown): AnnexItem[] =>
       v == null ? [] : Array.isArray(v) ? v : [v]
 
-    const parseAnnexResponse = (jsonText: string): { list: any[], type: string } => {
+    const parseAnnexResponse = (jsonText: string): { list: AnnexItem[], type: string } => {
       try {
         const json = JSON.parse(jsonText)
         const adminResult = json?.admRulBylSearch
@@ -75,7 +93,7 @@ export async function getAnnexes(
           lawName: parentName, apiKey: input.apiKey
         }))
         // 원래 법령명 매칭 필터
-        const filtered = result3.list.filter((a: any) => {
+        const filtered = result3.list.filter((a: AnnexItem) => {
           const name = String(a.관련법령명 || a.관련자치법규명 || a.관련행정규칙명 || "").replace(/<[^>]+>/g, "")
           return name === normalizedLawName
         })
@@ -115,7 +133,7 @@ export async function getAnnexes(
     }
 
     // 최신본 우선 정렬
-    annexList.sort((a: any, b: any) =>
+    annexList.sort((a: AnnexItem, b: AnnexItem) =>
       (b.자치법규시행일자 || b.공포일자 || "").localeCompare(a.자치법규시행일자 || a.공포일자 || "")
     )
 
@@ -130,24 +148,21 @@ export async function getAnnexes(
     // 별표 선택값 미지정 → 기존 목록 반환
     return formatAnnexList(filtered, lawType, input, normalizedLawName)
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true
-    }
+    return formatToolError(error, "get_annexes")
   }
 }
 
 // ─── 별표 텍스트 추출 ─────────────────────────────────
 
 async function extractAnnexContent(
-  annexList: any[],
+  annexList: AnnexItem[],
   annexSelector: string,
   normalizedLawName: string
 ): Promise<{ content: Array<{ type: string, text: string }>, isError?: boolean }> {
   // bylSeq / annexNo / lawName 내 힌트로 유연 매칭
   const matched = findMatchingAnnex(annexList, annexSelector)
   if (!matched) {
-    const availableBylSeq = annexList.map((a: any) => a.별표번호).filter(Boolean).slice(0, 20).join(", ")
+    const availableBylSeq = annexList.map((a) => a.별표번호).filter(Boolean).slice(0, 20).join(", ")
     return {
       content: [{
         type: "text",
@@ -215,7 +230,7 @@ async function extractAnnexContent(
 // ─── 목록 포맷 (기존 동작) ────────────────────────────
 
 function formatAnnexList(
-  annexList: any[],
+  annexList: AnnexItem[],
   lawType: string,
   input: GetAnnexesInput,
   normalizedLawName: string
@@ -301,11 +316,11 @@ function parseLawNameAndHint(lawName: string): { normalizedLawName: string, anne
   }
 }
 
-function findMatchingAnnex(annexList: any[], annexSelector: string): any | undefined {
+function findMatchingAnnex(annexList: AnnexItem[], annexSelector: string): AnnexItem | undefined {
   const selectorCandidates = buildSelectorCandidates(annexSelector)
   const selectorNumbers = extractSelectorNumbers(annexSelector)
 
-  return annexList.find((annex: any) => {
+  return annexList.find((annex: AnnexItem) => {
     const annexNum = String(annex.별표번호 || "").trim()
     const annexTitle = String(annex.별표명 || "")
 
@@ -410,7 +425,7 @@ function escapeRegex(value: string): string {
  * 관련법규명으로 annexList 필터링: 사용자 쿼리와 가장 일치하는 조례 우선
  * 여러 조례(예: "광진구의회 복무 조례" vs "광진구 복무 조례")가 혼합된 경우 분리
  */
-function filterByRelatedLawName(annexList: any[], queryName: string): any[] {
+function filterByRelatedLawName(annexList: AnnexItem[], queryName: string): AnnexItem[] {
   if (annexList.length <= 1) return annexList
 
   // 쿼리에서 단어 추출
@@ -418,7 +433,7 @@ function filterByRelatedLawName(annexList: any[], queryName: string): any[] {
   if (queryWords.length === 0) return annexList
 
   // 각 항목에 관련법규명 단어 매칭 점수 부여
-  const scored = annexList.map((annex: any) => {
+  const scored = annexList.map((annex: AnnexItem) => {
     const relatedName = String(annex.관련자치법규명 || annex.관련법령명 || "")
       .replace(/<[^>]+>/g, "")   // HTML 태그 제거
     const relatedWords = relatedName.split(/\s+/).filter((w) => w.length > 0)

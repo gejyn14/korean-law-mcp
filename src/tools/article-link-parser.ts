@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getLawText } from "./law-text.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const ParseArticleLinksSchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
@@ -71,13 +72,7 @@ export async function parseArticleLinks(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "parse_article_links")
   }
 }
 

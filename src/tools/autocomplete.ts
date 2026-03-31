@@ -6,6 +6,7 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { searchLaw } from "./search.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const SuggestLawNamesSchema = z.object({
   partial: z.string().describe("부분 입력된 법령명 (예: '관세', '환경')"),
@@ -120,12 +121,6 @@ export async function suggestLawNames(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "suggest_law_names")
   }
 }

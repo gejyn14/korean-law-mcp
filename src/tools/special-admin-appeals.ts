@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { parseTaxTribunalXML } from "../lib/xml-parser.js";
 import { truncateResponse } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 // ========================================
 // Common helpers (소청심사위원회 + 국민권익위 특별행정심판 공통)
@@ -68,7 +69,7 @@ async function searchSpecialAppeals(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return { content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true };
+    return formatToolError(error, `search_${target}`);
   }
 }
 
@@ -117,7 +118,7 @@ async function getSpecialAppealText(
 
     return { content: [{ type: "text", text: truncateResponse(output) }] };
   } catch (error) {
-    return { content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true };
+    return formatToolError(error, `get_${target}_text`);
   }
 }
 

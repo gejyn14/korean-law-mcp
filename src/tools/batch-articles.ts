@@ -10,6 +10,7 @@ import { lawCache } from "../lib/cache.js"
 import { flattenContent, extractHangContent, cleanHtml } from "../lib/article-parser.js"
 import { truncateResponse } from "../lib/schemas.js"
 import type { ToolResponse } from "../lib/types.js"
+import { formatToolError } from "../lib/errors.js"
 
 const LawEntrySchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
@@ -282,12 +283,6 @@ export async function getBatchArticles(
       isError: results.length === 0 && errors.length > 0,
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true,
-    }
+    return formatToolError(error, "get_batch_articles")
   }
 }

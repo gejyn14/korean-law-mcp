@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.2.0] - 2026-04-01
+
+### Added
+- 23개 신규 도구: 조약(2), 법령-자치법규 연계(4), 학칙/공단/공공기관(6), 특별행정심판(4), 감사원(2), 약칭(1), 행정규칙 신구대조(1), 조항호목(1), 문서분석(1), chain_document_review(1)
+- date-parser: 자연어 시간 표현 → YYYYMMDD 변환 (10개 패턴)
+- document-analysis: 8종 문서유형 분류, 17개 리스크규칙, 금액/기간 추출, 조항 충돌 탐지
+- 판례/해석례 날짜 필터 (fromDate/toDate)
+
+### Changed
+- 에러 처리 통일: 40개 도구의 인라인 에러 → formatToolError 전환
+- 중복 XML 파서 6개 → 공용 parseSearchXML 통합
+- cli.ts 분리: cli-format.ts + cli-executor.ts + cli.ts (689줄 → 443+181+227)
+- annex.ts: AnnexItem 타입 정의, any 12회 제거
+
+### Security
+- sse-server.ts: CORS * → CORS_ORIGIN 환경변수 기반
+- sse-server.ts: API 키 쿼리스트링 경로 제거 (헤더만 허용)
+- sse-server.ts: 보안 헤더 추가 (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+- sse-server.ts: 세션 ID 로그 마스킹 (첫 8자만 출력)
+
+### Fixed
+- 조약 XML 아이템태그 대소문자 (trty→Trty), 본문 JSON 키 (BothTrtyService)
+- 연계 fetchApi type 기본값 제거 (type=XML 시 500 발생)
+- api-client.ts: type 파라미터 미지정 시 생략
+
+- 총 도구 수: 64 → 87
+
 ## [1.9.0] - 2026-03-15
 
 ### Fixed

@@ -37,9 +37,10 @@ export async function startSSEServer(server: Server, port: number) {
     }
   }, 5 * 60 * 1000).unref()
 
-  // CORS 설정 (MCP Streamable HTTP 스펙 준수)
+  // CORS 및 보안 헤더 설정
+  const corsOrigin = process.env.CORS_ORIGIN || "*"
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*")
+    res.header("Access-Control-Allow-Origin", corsOrigin)
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS, HEAD")
     res.header("Access-Control-Allow-Headers",
       "Content-Type, Accept, Authorization, Mcp-Protocol-Version, mcp-protocol-version, Mcp-Session-Id, mcp-session-id, Last-Event-ID, last-event-id, Traceparent, Tracestate"
@@ -48,6 +49,10 @@ export async function startSSEServer(server: Server, port: number) {
       "Mcp-Session-Id, Content-Type, Mcp-Protocol-Version, Traceparent, Tracestate"
     )
     res.header("Access-Control-Max-Age", "86400")
+    // Security headers (http-server.ts와 동일)
+    res.header("X-Content-Type-Options", "nosniff")
+    res.header("X-Frame-Options", "DENY")
+    res.header("Referrer-Policy", "strict-origin-when-cross-origin")
     res.header("Mcp-Protocol-Version", "2025-03-26")
 
     if (req.method === "OPTIONS") {
@@ -86,11 +91,10 @@ export async function startSSEServer(server: Server, port: number) {
       (req.headers["LAW_OC"] as string | undefined) ||
       req.headers["x-api-key"] ||
       req.headers["authorization"]?.replace(/^Bearer\s+/i, "") ||
-      req.headers["x-law-oc"] ||
-      (req.query?.apiKey as string | undefined)
+      req.headers["x-law-oc"]
 
     if (sessionId) {
-      console.error(`Received MCP request for session: ${sessionId}`)
+      console.error(`Received MCP request for session: ${sessionId.slice(0, 8)}...`)
     } else {
       console.error("New MCP request (no session ID)")
     }
@@ -141,7 +145,7 @@ export async function startSSEServer(server: Server, port: number) {
         transport.onclose = () => {
           const sid = transport.sessionId
           if (sid && transports[sid]) {
-            console.error(`Transport closed for session ${sid}`)
+            console.error(`Transport closed for session ${sid.slice(0, 8)}...`)
             delete transports[sid]
             deleteSession(sid)
           }
@@ -191,7 +195,7 @@ export async function startSSEServer(server: Server, port: number) {
     if (lastEventId) {
       console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`)
     } else {
-      console.error(`Establishing SSE stream for session ${sessionId}`)
+      console.error(`Establishing SSE stream for session ${sessionId.slice(0, 8)}...`)
     }
 
     try {
@@ -214,14 +218,14 @@ export async function startSSEServer(server: Server, port: number) {
       return
     }
 
-    console.error(`Session termination request for ${sessionId}`)
+    console.error(`Session termination request for ${sessionId.slice(0, 8)}...`)
 
     try {
       const transport = transports[sessionId].transport
       await transport.handleRequest(req, res)
       delete transports[sessionId]
       deleteSession(sessionId)
-      console.error(`Session removed: ${sessionId}`)
+      console.error(`Session removed: ${sessionId.slice(0, 8)}...`)
     } catch (error) {
       console.error("Error handling session termination:", error)
       if (!res.headersSent) {

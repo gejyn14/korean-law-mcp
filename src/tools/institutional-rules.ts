@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { extractTag, parseSearchXML } from "../lib/xml-parser.js";
 import { truncateResponse } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 // ========================================
 // Common helpers
@@ -94,7 +95,7 @@ async function searchRules(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return { content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true };
+    return formatToolError(error, `search_${target}_rules`);
   }
 }
 
@@ -135,7 +136,7 @@ async function getRuleText(
 
     return { content: [{ type: "text", text: truncateResponse(output) }] };
   } catch (error) {
-    return { content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }], isError: true };
+    return formatToolError(error, `get_${target}_rule_text`);
   }
 }
 

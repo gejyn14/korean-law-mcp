@@ -1,8 +1,8 @@
 # Korean Law MCP - API Reference
 
-> **v1.9.0** | 64개 도구
+> **v2.2.0** | 87개 도구
 
-도구 목록은 [README.md](../README.md#도구-목록-64개) 참조.
+도구 목록은 [README.md](../README.md#도구-목록-87개) 참조.
 상세 파라미터는 각 도구의 Zod 스키마(`src/tools/*.ts`) 참조.
 
 ---
@@ -95,7 +95,7 @@
 | `compare_old_new` | 신구법 대조 |
 | `get_three_tier` | 법률→시행령→시행규칙 |
 
-### 분석 (9개)
+### 분석 (10개)
 
 | 도구 | 설명 |
 |------|------|
@@ -108,6 +108,7 @@
 | `get_law_statistics` | 법령 통계 |
 | `parse_article_links` | 조문 내 참조 파싱 |
 | `get_external_links` | 외부 링크 생성 |
+| `analyze_document` | 문서 유형 분류 + 리스크 탐지 |
 
 ### 전문 (4개)
 
@@ -118,7 +119,7 @@
 | `search_customs_interpretations` | 관세청 법령해석 검색 |
 | `get_customs_interpretation_text` | 관세청 법령해석 전문 |
 
-### 헌재·행심·위원회 (6개)
+### 헌재·행심·위원회·감사원 (8개)
 
 | 도구 | 설명 |
 |------|------|
@@ -128,6 +129,7 @@
 | `get_admin_appeal_text` | 행정심판례 전문 |
 | `search_ftc_decisions` / `search_nlrc_decisions` / `search_pipc_decisions` | 공정위/노동위/개보위 결정 검색 |
 | `get_ftc_decision_text` / `get_nlrc_decision_text` / `get_pipc_decision_text` | 결정 전문 |
+| `search_acr_decisions` / `get_acr_decision_text` | 감사원 결정 검색/조회 |
 
 ### 지식베이스 (7개)
 
@@ -141,7 +143,7 @@
 | `get_term_articles` | 용어→조문 연계 |
 | `get_related_laws` | 관련법령 조회 |
 
-### 기타 (4개)
+### 기타 (6개)
 
 | 도구 | 설명 |
 |------|------|
@@ -150,8 +152,43 @@
 | `search_historical_law` / `get_historical_law` | 연혁법령 검색/조회 |
 | `search_legal_terms` | 법령용어 사전 검색 |
 | `get_law_system_tree` | 법령체계도 |
+| `get_law_abbreviations` | 법령 약칭 목록 조회 |
+| `compare_admin_rule_old_new` | 행정규칙 신구대조 |
 
-### 체인 도구 (7개)
+### 법령-자치법규 연계 (4개)
+
+| 도구 | 설명 |
+|------|------|
+| `get_linked_ordinances` | 법령에 연계된 자치법규 검색 |
+| `get_linked_ordinance_articles` | 연계 자치법규 조문 조회 |
+| `get_delegated_laws` | 위임 법령 조회 |
+| `get_linked_laws_from_ordinance` | 자치법규에서 상위법령 조회 |
+
+### 조약 (2개)
+
+| 도구 | 설명 |
+|------|------|
+| `search_treaties` | 조약 검색 |
+| `get_treaty_text` | 조약 전문 조회 |
+
+### 학칙·공단·공공기관 (6개)
+
+| 도구 | 설명 |
+|------|------|
+| `search_school_rules` / `get_school_rule_text` | 학칙 검색/조회 |
+| `search_public_corp_rules` / `get_public_corp_rule_text` | 공단 규정 검색/조회 |
+| `search_public_institution_rules` / `get_public_institution_rule_text` | 공공기관 규정 검색/조회 |
+
+### 특별행정심판 (4개)
+
+| 도구 | 설명 |
+|------|------|
+| `search_acr_special_appeals` | 감사원 특별행정심판 검색 |
+| `get_acr_special_appeal_text` | 감사원 특별행정심판 전문 |
+| `search_appeal_review_decisions` | 소청심사 검색 |
+| `get_appeal_review_decision_text` | 소청심사 전문 |
+
+### 체인 도구 (8개)
 
 여러 도구를 자동 조합하여 복합 리서치를 한 번에 수행.
 
@@ -164,6 +201,7 @@
 | `chain_ordinance_compare` | 조례 비교 연구 (상위법→전국 조례 검색) |
 | `chain_full_research` | 종합 리서치 (AI검색→법령→판례→해석) |
 | `chain_procedure_detail` | 절차/비용/서식 (법체계→별표→시행규칙별표) |
+| `chain_document_review` | 문서 리뷰 (문서분석→관련법령→판례) |
 
 ---
 

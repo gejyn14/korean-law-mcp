@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { parseTaxTribunalXML } from "../lib/xml-parser.js";
 import { truncateResponse } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Tax tribunal decision search tool - Search for special administrative appeals decisions
 export const searchTaxTribunalDecisionsSchema = z.object({
@@ -81,13 +82,7 @@ export async function searchTaxTribunalDecisions(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_tax_tribunal_decisions");
   }
 }
 
@@ -196,12 +191,6 @@ export async function getTaxTribunalDecisionText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_tax_tribunal_decision_text");
   }
 }

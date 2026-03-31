@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { cleanHtml } from "../lib/article-parser.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const GetOrdinanceSchema = z.object({
   ordinSeq: z.string().describe("자치법규 일련번호"),
@@ -97,12 +98,6 @@ export async function getOrdinance(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_ordinance")
   }
 }

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse } from "../lib/schemas.js";
-import { extractTag } from "../lib/xml-parser.js";
+import { parseSearchXML, extractTag } from "../lib/xml-parser.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Customs legal interpretation search tool - Search for customs law interpretations
 export const searchCustomsInterpretationsSchema = z.object({
@@ -42,17 +43,22 @@ export async function searchCustomsInterpretations(
       apiKey: args.apiKey,
     });
 
-    // Simple XML parsing
-    const result = parseXML(xmlText);
+    // parseSearchXML 사용 (rootTag: CgmExpc, itemTag: cgmExpc)
+    const { totalCnt, page: currentPage, items: expcs } = parseSearchXML(
+      xmlText, "CgmExpc", "cgmExpc",
+      (content) => ({
+        법령해석일련번호: extractTag(content, "법령해석일련번호"),
+        안건명: extractTag(content, "안건명"),
+        질의기관코드: extractTag(content, "질의기관코드"),
+        질의기관명: extractTag(content, "질의기관명"),
+        해석기관코드: extractTag(content, "해석기관코드"),
+        해석기관명: extractTag(content, "해석기관명"),
+        해석일자: extractTag(content, "해석일자"),
+        법령해석상세링크: extractTag(content, "법령해석상세링크"),
+      })
+    );
 
-    if (!result.KcsCgmExpcSearch) {
-      throw new Error("Invalid response format from API");
-    }
-
-    const data = result.KcsCgmExpcSearch;
-    const totalCount = parseInt(data.totalCnt || "0");
-    const currentPage = parseInt(data.page || "1");
-    const expcs = data.expc ? (Array.isArray(data.expc) ? data.expc : [data.expc]) : [];
+    const totalCount = totalCnt;
 
     if (totalCount === 0) {
       return {
@@ -85,13 +91,7 @@ export async function searchCustomsInterpretations(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_customs_interpretations");
   }
 }
 
@@ -186,55 +186,7 @@ export async function getCustomsInterpretationText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_customs_interpretation_text");
   }
 }
 
-// Simple XML parser helper
-function parseXML(xml: string): any {
-  const obj: any = {};
-
-  // Extract CgmExpc (actual API response uses <CgmExpc>, not <KcsCgmExpcSearch>)
-  const searchMatch = xml.match(/<CgmExpc[^>]*>([\s\S]*?)<\/CgmExpc>/);
-  if (!searchMatch) return obj;
-
-  const content = searchMatch[1];
-  obj.KcsCgmExpcSearch = {};
-
-  // Extract totalCnt and page
-  const totalCntMatch = content.match(/<totalCnt>([^<]*)<\/totalCnt>/);
-  const pageMatch = content.match(/<page>([^<]*)<\/page>/);
-
-  obj.KcsCgmExpcSearch.totalCnt = totalCntMatch ? totalCntMatch[1] : "0";
-  obj.KcsCgmExpcSearch.page = pageMatch ? pageMatch[1] : "1";
-
-  // Extract cgmExpc items (actual API uses <cgmExpc>, not <expc>)
-  const expcMatches = content.matchAll(/<cgmExpc[^>]*>([\s\S]*?)<\/cgmExpc>/g);
-  obj.KcsCgmExpcSearch.expc = [];
-
-  for (const match of expcMatches) {
-    const expcContent = match[1];
-    const expc: any = {};
-
-    const extract = (tag: string) => extractTag(expcContent, tag);
-
-    expc.법령해석일련번호 = extract("법령해석일련번호");
-    expc.안건명 = extract("안건명");
-    expc.질의기관코드 = extract("질의기관코드");
-    expc.질의기관명 = extract("질의기관명");
-    expc.해석기관코드 = extract("해석기관코드");
-    expc.해석기관명 = extract("해석기관명");
-    expc.해석일자 = extract("해석일자");
-    expc.법령해석상세링크 = extract("법령해석상세링크");
-
-    obj.KcsCgmExpcSearch.expc.push(expc);
-  }
-
-  return obj;
-}

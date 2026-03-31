@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod"
+import { formatToolError } from "../lib/errors.js"
 
 export const ExternalLinksSchema = z.object({
   linkType: z.enum(["law", "precedent", "interpretation", "ordinance", "admin_rule"]).describe(
@@ -124,13 +125,7 @@ export async function getExternalLinks(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_external_links")
   }
 }
 

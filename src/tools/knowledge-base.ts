@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
 import { extractTag, parseKBXML, fallbackTermSearch } from "./kb-utils.js"
+import { formatToolError } from "../lib/errors.js"
 
 // ============================================================================
 // 법령정보 지식베이스 API
@@ -66,10 +67,7 @@ export async function getLegalTermKB(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_legal_term_kb");
   }
 }
 
@@ -124,10 +122,7 @@ export async function getLegalTermDetail(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_legal_term_detail");
   }
 }
 
@@ -185,10 +180,7 @@ export async function getDailyTerm(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_daily_term");
   }
 }
 
@@ -234,10 +226,7 @@ export async function getDailyToLegal(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_daily_to_legal");
   }
 }
 
@@ -283,10 +272,7 @@ export async function getLegalToDaily(
 
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_legal_to_daily");
   }
 }
 
@@ -356,10 +342,7 @@ export async function getTermArticles(
 
     return { content: [{ type: "text", text: truncateResponse(output) }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_term_articles");
   }
 }
 
@@ -434,10 +417,7 @@ export async function getRelatedLaws(
 
     return { content: [{ type: "text", text: truncateResponse(output) }] };
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true,
-    };
+    return formatToolError(error, "get_related_laws");
   }
 }
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse, formatDateDot } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Law system tree tool - Get hierarchical structure of laws
 export const getLawSystemTreeSchema = z.object({
@@ -130,13 +131,7 @@ export async function getLawSystemTree(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_law_system_tree");
   }
 }
 

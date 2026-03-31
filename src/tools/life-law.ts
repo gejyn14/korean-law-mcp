@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse, formatDateDot } from "../lib/schemas.js";
-import { extractTag as sharedExtractTag } from "../lib/xml-parser.js";
+import { parseSearchXML, extractTag as sharedExtractTag } from "../lib/xml-parser.js";
+import { formatToolError } from "../lib/errors.js";
 
 // AI-powered intelligent law search tool
 // 이름은 searchAiLaw가 더 정확하지만, 호환성을 위해 searchLifeLaw alias 유지
@@ -38,15 +39,55 @@ export async function searchAiLaw(
       },
       apiKey: args.apiKey,
     });
-    const result = parseAiSearchXML(xmlText, searchType);
+    // searchType에 따라 itemTag 결정
+    const itemTagMap: Record<string, string> = {
+      "0": "법령조문", "1": "법령별표서식", "2": "행정규칙조문", "3": "행정규칙별표서식"
+    };
+    const itemTag = itemTagMap[searchType] || "법령조문";
 
-    if (!result.aiSearch) {
-      throw new Error("Invalid response format from API");
-    }
+    // parseSearchXML 사용 (rootTag: aiSearch, totalTag: 검색결과개수)
+    const { totalCnt: totalCount, items: parsedItems } = parseSearchXML(
+      xmlText, "aiSearch", itemTag,
+      (itemContent) => {
+        const extractField = (tag: string) => sharedExtractTag(itemContent, tag);
+        const item: any = { 시행일자: extractField("시행일자") };
 
-    const data = result.aiSearch;
-    const totalCount = parseInt(data.검색결과개수 || "0");
-    let items = data.items || [];
+        if (searchType === "0") {
+          item.법령ID = extractField("법령ID");
+          item.법령명 = extractField("법령명");
+          item.법령종류명 = extractField("법령종류명");
+          item.소관부처명 = extractField("소관부처명");
+          item.조문번호 = extractField("조문번호");
+          item.조문가지번호 = extractField("조문가지번호");
+          item.조문제목 = extractField("조문제목");
+          item.조문내용 = extractField("조문내용");
+        } else if (searchType === "1") {
+          item.법령ID = extractField("법령ID");
+          item.법령명 = extractField("법령명");
+          item.별표서식번호 = extractField("별표서식번호");
+          item.별표서식제목 = extractField("별표서식제목");
+          item.별표서식구분명 = extractField("별표서식구분명");
+        } else if (searchType === "2") {
+          item.행정규칙ID = extractField("행정규칙ID");
+          item.행정규칙명 = extractField("행정규칙명");
+          item.발령기관명 = extractField("발령기관명");
+          item.조문번호 = extractField("조문번호");
+          item.조문가지번호 = extractField("조문가지번호");
+          item.조문제목 = extractField("조문제목");
+          item.조문내용 = extractField("조문내용");
+        } else {
+          item.행정규칙ID = extractField("행정규칙ID");
+          item.행정규칙명 = extractField("행정규칙명");
+          item.별표서식번호 = extractField("별표서식번호");
+          item.별표서식제목 = extractField("별표서식제목");
+          item.별표서식구분명 = extractField("별표서식구분명");
+        }
+        return item;
+      },
+      { totalTag: "검색결과개수" }
+    );
+
+    let items = parsedItems as any[];
 
     // lawTypes 필터 적용 (클라이언트 사이드)
     if (args.lawTypes && args.lawTypes.length > 0 && items.length > 0) {
@@ -125,13 +166,7 @@ export async function searchAiLaw(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_ai_law");
   }
 }
 
@@ -141,95 +176,3 @@ export type SearchLifeLawInput = SearchAiLawInput;
 export const searchLifeLaw = searchAiLaw;
 
 // formatDate → schemas.ts의 formatDateDot 사용
-
-// XML parser for AI search
-function parseAiSearchXML(xml: string, searchType: string): any {
-  const obj: any = { aiSearch: {} };
-
-  // Find root element
-  const rootStartTag = "<aiSearch>";
-  const rootEndTag = "</aiSearch>";
-  const startIdx = xml.indexOf(rootStartTag);
-  const endIdx = xml.lastIndexOf(rootEndTag);
-
-  if (startIdx === -1 || endIdx === -1) return obj;
-
-  const content = xml.substring(startIdx + rootStartTag.length, endIdx);
-
-  // Extract count
-  const countMatch = content.match(/<검색결과개수>(\d+)<\/검색결과개수>/);
-  obj.aiSearch.검색결과개수 = countMatch ? countMatch[1] : "0";
-
-  obj.aiSearch.items = [];
-
-  // Determine item tag based on search type
-  let itemTag: string;
-  switch (searchType) {
-    case "1":
-      itemTag = "법령별표서식";
-      break;
-    case "2":
-      itemTag = "행정규칙조문";
-      break;
-    case "3":
-      itemTag = "행정규칙별표서식";
-      break;
-    default:
-      itemTag = "법령조문";
-  }
-
-  const itemRegex = new RegExp(`<${itemTag}[^>]*>([\\s\\S]*?)<\\/${itemTag}>`, 'g');
-  const itemMatches = content.matchAll(itemRegex);
-
-  for (const match of itemMatches) {
-    const itemContent = match[1];
-    const item: any = {};
-
-    const extractField = (tag: string) => sharedExtractTag(itemContent, tag);
-
-    // Common fields
-    item.시행일자 = extractField("시행일자");
-
-    if (searchType === "0") {
-      // 법령조문
-      item.법령ID = extractField("법령ID");
-      item.법령명 = extractField("법령명");
-      item.법령종류명 = extractField("법령종류명");
-      item.소관부처명 = extractField("소관부처명");
-      item.조문번호 = extractField("조문번호");
-      item.조문가지번호 = extractField("조문가지번호");
-      item.조문제목 = extractField("조문제목");
-      item.조문내용 = extractField("조문내용");
-    } else if (searchType === "1") {
-      // 법령별표서식
-      item.법령ID = extractField("법령ID");
-      item.법령명 = extractField("법령명");
-      item.별표서식번호 = extractField("별표서식번호");
-      item.별표서식제목 = extractField("별표서식제목");
-      item.별표서식구분명 = extractField("별표서식구분명");
-    } else if (searchType === "2") {
-      // 행정규칙조문
-      item.행정규칙ID = extractField("행정규칙ID");
-      item.행정규칙명 = extractField("행정규칙명");
-      item.발령기관명 = extractField("발령기관명");
-      item.조문번호 = extractField("조문번호");
-      item.조문가지번호 = extractField("조문가지번호");
-      item.조문제목 = extractField("조문제목");
-      item.조문내용 = extractField("조문내용");
-    } else {
-      // 행정규칙별표서식
-      item.행정규칙ID = extractField("행정규칙ID");
-      item.행정규칙명 = extractField("행정규칙명");
-      item.별표서식번호 = extractField("별표서식번호");
-      item.별표서식제목 = extractField("별표서식제목");
-      item.별표서식구분명 = extractField("별표서식구분명");
-    }
-
-    obj.aiSearch.items.push(item);
-  }
-
-  return obj;
-}
-
-// Remove getLifeLawGuide as aiSearch doesn't have a detail API
-// Users should use get_law_text or get_article_text for details

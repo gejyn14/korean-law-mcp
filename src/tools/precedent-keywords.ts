@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getPrecedentText } from "./precedents.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const ExtractKeywordsSchema = z.object({
   id: z.string().describe("판례일련번호"),
@@ -54,13 +55,7 @@ export async function extractPrecedentKeywords(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "extract_precedent_keywords")
   }
 }
 

@@ -7,6 +7,7 @@ import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
 import { lawCache } from "../lib/cache.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const SearchLawSchema = z.object({
   query: z.string().describe("검색할 법령명 (예: '관세법', 'fta특례법', '화관법')"),
@@ -84,12 +85,6 @@ export async function searchLaw(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "search_law")
   }
 }

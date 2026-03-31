@@ -6,6 +6,7 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getThreeTier } from "./three-tier.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const GetLawTreeSchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
@@ -113,12 +114,6 @@ export async function getLawTree(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_law_tree")
   }
 }

@@ -5,6 +5,7 @@
 import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const LawHistorySchema = z.object({
   regDt: z.string().describe("법령 변경일자 (YYYYMMDD, 예: '20240101')"),
@@ -76,12 +77,6 @@ export async function getLawHistory(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_law_history")
   }
 }

@@ -6,6 +6,7 @@ import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 // search_admin_rule 스키마
 export const SearchAdminRuleSchema = z.object({
@@ -86,13 +87,7 @@ export async function searchAdminRule(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "search_admin_rule")
   }
 }
 
@@ -238,13 +233,7 @@ export async function getAdminRule(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_admin_rule")
   }
 }
 
@@ -348,9 +337,6 @@ export async function compareAdminRuleOldNew(
 
     return { content: [{ type: "text", text: truncateResponse(resultText) }] }
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true
-    }
+    return formatToolError(error, "compare_admin_rule_old_new")
   }
 }

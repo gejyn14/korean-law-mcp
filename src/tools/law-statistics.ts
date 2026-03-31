@@ -6,6 +6,7 @@ import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const LawStatisticsSchema = z.object({
   days: z.number().min(1).max(90).optional().default(30).describe("최근 변경 분석 기간 (일 단위, 기본값: 30, 최대: 90)"),
@@ -22,13 +23,7 @@ export async function getLawStatistics(
   try {
     return await getRecentChanges(apiClient, input.days, input.limit, input.apiKey)
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_law_statistics")
   }
 }
 

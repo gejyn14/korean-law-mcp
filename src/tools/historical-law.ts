@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse, formatDateDot } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 /**
  * 법령 연혁 조회 도구
@@ -86,13 +87,7 @@ export async function searchHistoricalLaw(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_historical_law");
   }
 }
 
@@ -198,13 +193,7 @@ export async function getHistoricalLaw(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_historical_law");
   }
 }
 

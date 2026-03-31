@@ -7,6 +7,7 @@ import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
 import { buildJO, buildOrdinanceJO, formatJO } from "../lib/law-parser.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const ParseJoCodeSchema = z.object({
   joText: z.string().describe("변환할 조문 번호 (예: '제38조', '10조의2', '003800', '010000')"),
@@ -50,13 +51,7 @@ export async function parseJoCode(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `조문 번호 변환 실패: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "parse_jo_code")
   }
 }
 
@@ -118,9 +113,6 @@ export async function getLawAbbreviations(
       content: [{ type: "text", text: truncateResponse(resultText) }]
     }
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true
-    }
+    return formatToolError(error, "get_law_abbreviations")
   }
 }

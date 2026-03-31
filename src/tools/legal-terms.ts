@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse } from "../lib/schemas.js";
-import { extractTag } from "../lib/xml-parser.js";
+import { parseSearchXML, extractTag } from "../lib/xml-parser.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Legal terms search tool - Search for legal terminology definitions
 export const searchLegalTermsSchema = z.object({
@@ -28,16 +29,22 @@ export async function searchLegalTerms(
       },
       apiKey: args.apiKey,
     });
-    const result = parseLegalTermsXML(xmlText);
+    // parseSearchXML 사용 (rootTag: LsTrmSearch, itemTag: lstrm)
+    const { totalCnt, page: currentPage, items: terms } = parseSearchXML(
+      xmlText, "LsTrmSearch", "lstrm",
+      (content) => ({
+        용어명: extractTag(content, "법령용어명") || extractTag(content, "용어명") || extractTag(content, "용어"),
+        용어ID: extractTag(content, "법령용어ID"),
+        용어정의: extractTag(content, "용어정의") || extractTag(content, "정의"),
+        관련법령: extractTag(content, "관련법령") || extractTag(content, "법령명"),
+        일상용어: extractTag(content, "일상용어"),
+        영문용어: extractTag(content, "영문용어") || extractTag(content, "영문"),
+        상세링크: extractTag(content, "법령용어상세링크") || extractTag(content, "법령용어상세검색"),
+      }),
+      { useIndexOf: true }
+    );
 
-    if (!result.LsTrmSearch) {
-      throw new Error("Invalid response format from API");
-    }
-
-    const data = result.LsTrmSearch;
-    const totalCount = parseInt(data.totalCnt || "0");
-    const currentPage = parseInt(data.page || "1");
-    const terms = data.lsTrm ? (Array.isArray(data.lsTrm) ? data.lsTrm : [data.lsTrm]) : [];
+    const totalCount = totalCnt;
 
     if (totalCount === 0) {
       let errorMsg = "검색 결과가 없습니다.";
@@ -87,58 +94,7 @@ export async function searchLegalTerms(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_legal_terms");
   }
 }
 
-// XML parser for legal terms search
-function parseLegalTermsXML(xml: string): any {
-  const obj: any = {};
-
-  // Find root element using indexOf/lastIndexOf for accurate matching
-  const rootStartTag = "<LsTrmSearch>";
-  const rootEndTag = "</LsTrmSearch>";
-  const startIdx = xml.indexOf(rootStartTag);
-  const endIdx = xml.lastIndexOf(rootEndTag);
-
-  if (startIdx === -1 || endIdx === -1) return obj;
-
-  const content = xml.substring(startIdx + rootStartTag.length, endIdx);
-  obj.LsTrmSearch = {};
-
-  const totalCntMatch = content.match(/<totalCnt>([^<]*)<\/totalCnt>/);
-  const pageMatch = content.match(/<page>([^<]*)<\/page>/);
-
-  obj.LsTrmSearch.totalCnt = totalCntMatch ? totalCntMatch[1] : "0";
-  obj.LsTrmSearch.page = pageMatch ? pageMatch[1] : "1";
-
-  // Extract lstrm items (lowercase)
-  const itemMatches = content.matchAll(/<lstrm[^>]*>([\s\S]*?)<\/lstrm>/g);
-  obj.LsTrmSearch.lsTrm = [];
-
-  for (const match of itemMatches) {
-    const itemContent = match[1];
-    const item: any = {};
-
-    const extract = (tag: string) => extractTag(itemContent, tag);
-
-    // Match actual API field names
-    item.용어명 = extract("법령용어명") || extract("용어명") || extract("용어");
-    item.용어ID = extract("법령용어ID");
-    item.용어정의 = extract("용어정의") || extract("정의");
-    item.관련법령 = extract("관련법령") || extract("법령명");
-    item.일상용어 = extract("일상용어");
-    item.영문용어 = extract("영문용어") || extract("영문");
-    item.상세링크 = extract("법령용어상세링크") || extract("법령용어상세검색");
-
-    obj.LsTrmSearch.lsTrm.push(item);
-  }
-
-  return obj;
-}

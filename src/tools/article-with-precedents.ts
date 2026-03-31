@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getLawText, GetLawTextInput } from "./law-text.js"
 import { searchPrecedents } from "./precedents.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const GetArticleWithPrecedentsSchema = z.object({
   mst: z.string().optional().describe("법령일련번호 (search_law에서 획득)"),
@@ -83,12 +84,6 @@ export async function getArticleWithPrecedents(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "get_article_with_precedents")
   }
 }

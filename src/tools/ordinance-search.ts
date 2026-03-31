@@ -5,7 +5,8 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { normalizeLawSearchText, expandOrdinanceQuery } from "../lib/search-normalizer.js"
-import { extractTag } from "../lib/xml-parser.js"
+import { parseSearchXML, extractTag } from "../lib/xml-parser.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const SearchOrdinanceSchema = z.object({
   query: z.string().describe("검색할 자치법규명 (예: '서울', '환경')"),
@@ -30,8 +31,19 @@ export async function searchOrdinance(
       apiKey: input.apiKey
     })
 
-    let result = parseOrdinanceXML(xmlText)
-    let totalCount = parseInt(result.OrdinSearch?.totalCnt || "0")
+    // parseSearchXML 사용 (rootTag: OrdinSearch, itemTag: law)
+    let parsed = parseSearchXML(
+      xmlText, "OrdinSearch", "law",
+      (content) => ({
+        자치법규일련번호: extractTag(content, "자치법규일련번호"),
+        자치법규명: extractTag(content, "자치법규명"),
+        지자체기관명: extractTag(content, "지자체기관명"),
+        공포일자: extractTag(content, "공포일자"),
+        시행일자: extractTag(content, "시행일자"),
+        자치법규상세링크: extractTag(content, "자치법규상세링크"),
+      })
+    )
+    let totalCount = parsed.totalCnt
     let usedQuery = normalizedQuery
 
     // 검색 결과 없으면 확장 쿼리로 자동 재시도
@@ -39,32 +51,34 @@ export async function searchOrdinance(
       const { expanded } = expandOrdinanceQuery(input.query)
 
       for (const expandedQuery of expanded) {
-        // 재시도: expandedQuery
-
         xmlText = await apiClient.searchOrdinance({
           query: expandedQuery,
           display: input.display || 20,
           apiKey: input.apiKey
         })
 
-        result = parseOrdinanceXML(xmlText)
-        totalCount = parseInt(result.OrdinSearch?.totalCnt || "0")
+        parsed = parseSearchXML(
+          xmlText, "OrdinSearch", "law",
+          (content) => ({
+            자치법규일련번호: extractTag(content, "자치법규일련번호"),
+            자치법규명: extractTag(content, "자치법규명"),
+            지자체기관명: extractTag(content, "지자체기관명"),
+            공포일자: extractTag(content, "공포일자"),
+            시행일자: extractTag(content, "시행일자"),
+            자치법규상세링크: extractTag(content, "자치법규상세링크"),
+          })
+        )
+        totalCount = parsed.totalCnt
 
         if (totalCount > 0) {
-          // 발견: expandedQuery
           usedQuery = expandedQuery
           break
         }
       }
     }
 
-    if (!result.OrdinSearch) {
-      throw new Error("Invalid response format from API")
-    }
-
-    const data = result.OrdinSearch
-    const currentPage = parseInt(data.page || "1")
-    const ordinances = data.ordin ? (Array.isArray(data.ordin) ? data.ordin : [data.ordin]) : []
+    const currentPage = parsed.page
+    const ordinances = parsed.items
 
     if (totalCount === 0) {
       // 확장 검색도 실패한 경우, 시도한 쿼리들 안내
@@ -100,53 +114,7 @@ export async function searchOrdinance(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "search_ordinance")
   }
 }
 
-// Simple XML parser for ordinance search
-function parseOrdinanceXML(xml: string): any {
-  const obj: any = {}
-
-  // Extract OrdinSearch
-  const ordinSearchMatch = xml.match(/<OrdinSearch[^>]*>([\s\S]*?)<\/OrdinSearch>/)
-  if (!ordinSearchMatch) return obj
-
-  const content = ordinSearchMatch[1]
-  obj.OrdinSearch = {}
-
-  // Extract totalCnt and page
-  const totalCntMatch = content.match(/<totalCnt>([^<]*)<\/totalCnt>/)
-  const pageMatch = content.match(/<page>([^<]*)<\/page>/)
-
-  obj.OrdinSearch.totalCnt = totalCntMatch ? totalCntMatch[1] : "0"
-  obj.OrdinSearch.page = pageMatch ? pageMatch[1] : "1"
-
-  // Extract law items (자치법규는 <law> 태그로 반환됨)
-  const ordinMatches = content.matchAll(/<law[^>]*>([\s\S]*?)<\/law>/g)
-  obj.OrdinSearch.ordin = []
-
-  for (const match of ordinMatches) {
-    const ordinContent = match[1]
-    const ordin: any = {}
-
-    const extract = (tag: string) => extractTag(ordinContent, tag)
-
-    ordin.자치법규일련번호 = extract("자치법규일련번호")
-    ordin.자치법규명 = extract("자치법규명")
-    ordin.지자체기관명 = extract("지자체기관명")
-    ordin.공포일자 = extract("공포일자")
-    ordin.시행일자 = extract("시행일자")
-    ordin.자치법규상세링크 = extract("자치법규상세링크")
-
-    obj.OrdinSearch.ordin.push(ordin)
-  }
-
-  return obj
-}

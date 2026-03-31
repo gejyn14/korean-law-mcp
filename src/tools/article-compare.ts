@@ -6,6 +6,7 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getLawText } from "./law-text.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const CompareArticlesSchema = z.object({
   law1: z.object({
@@ -78,12 +79,6 @@ export async function compareArticles(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "compare_articles")
   }
 }

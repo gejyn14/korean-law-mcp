@@ -5,6 +5,7 @@
 import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const AdvancedSearchSchema = z.object({
   query: z.string().describe("검색 키워드"),
@@ -77,13 +78,7 @@ export async function advancedSearch(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "advanced_search")
   }
 }
 

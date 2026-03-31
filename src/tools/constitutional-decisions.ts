@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { parseConstitutionalXML } from "../lib/xml-parser.js";
 import { truncateResponse } from "../lib/schemas.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Constitutional Court decision search tool - Search for Constitutional Court rulings
 export const searchConstitutionalDecisionsSchema = z.object({
@@ -87,13 +88,7 @@ export async function searchConstitutionalDecisions(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_constitutional_decisions");
   }
 }
 
@@ -170,12 +165,6 @@ export async function getConstitutionalDecisionText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_constitutional_decision_text");
   }
 }

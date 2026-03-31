@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { getPrecedentText } from "./precedents.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const SummarizePrecedentSchema = z.object({
   id: z.string().describe("판례일련번호"),
@@ -49,13 +50,7 @@ export async function summarizePrecedent(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "summarize_precedent")
   }
 }
 

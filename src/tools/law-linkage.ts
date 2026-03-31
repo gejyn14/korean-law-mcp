@@ -10,6 +10,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
 import { extractTag } from "../lib/xml-parser.js"
+import { formatToolError } from "../lib/errors.js"
 
 // === 스키마 ===
 
@@ -103,10 +104,7 @@ async function handleLinkage(apiClient: LawApiClient, input: LinkageInput, cfg: 
     output += formatItems(result.items)
     return { content: [{ type: "text", text: truncateResponse(output) }] }
   } catch (error) {
-    return {
-      content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
-      isError: true
-    }
+    return formatToolError(error, cfg.title)
   }
 }
 

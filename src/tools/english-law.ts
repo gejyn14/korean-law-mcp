@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse } from "../lib/schemas.js";
-import { extractTag, stripHtml } from "../lib/xml-parser.js";
+import { parseSearchXML, extractTag, stripHtml } from "../lib/xml-parser.js";
+import { formatToolError } from "../lib/errors.js";
 
 // English law search tool - Search for English translations of Korean laws
 export const searchEnglishLawSchema = z.object({
@@ -33,16 +34,23 @@ export async function searchEnglishLaw(
       extraParams,
       apiKey: args.apiKey,
     });
-    const result = parseEnglishLawXML(xmlText);
+    // parseSearchXML 사용 (rootTag: "" = 전체 XML, itemTag: law)
+    // 영문법령 API는 루트 태그가 일정하지 않아 전체 XML에서 추출
+    const { totalCnt, page: currentPage, items: allLaws } = parseSearchXML(
+      xmlText, "", "law",
+      (content) => ({
+        법령ID: extractTag(content, "법령ID"),
+        영문법령명: extractTag(content, "법령명영문"),
+        한글법령명: stripHtml(extractTag(content, "법령명한글")),
+        시행일자: extractTag(content, "시행일자"),
+        법령구분: extractTag(content, "법령구분명"),
+        법령상세링크: extractTag(content, "법령상세링크"),
+      })
+    );
 
-    if (!result.ElawSearch) {
-      throw new Error("Invalid response format from API");
-    }
-
-    const data = result.ElawSearch;
-    const totalCount = parseInt(data.totalCnt || "0");
-    const currentPage = parseInt(data.page || "1");
-    const laws = data.elaw ? (Array.isArray(data.elaw) ? data.elaw : [data.elaw]) : [];
+    const totalCount = totalCnt;
+    // 유효한 항목만 필터링 (기존 동작 유지)
+    const laws = allLaws.filter(item => item.법령ID || item.영문법령명);
 
     if (totalCount === 0) {
       let errorMsg = "검색 결과가 없습니다.";
@@ -85,13 +93,7 @@ export async function searchEnglishLaw(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_english_law");
   }
 }
 
@@ -191,48 +193,7 @@ export async function getEnglishLawText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_english_law_text");
   }
 }
 
-// XML parser for English law search
-function parseEnglishLawXML(xml: string): any {
-  const obj: any = { ElawSearch: {} };
-
-  // Extract totalCnt and page directly (works regardless of root tag)
-  const totalCntMatch = xml.match(/<totalCnt>([^<]*)<\/totalCnt>/);
-  const pageMatch = xml.match(/<page>([^<]*)<\/page>/);
-
-  obj.ElawSearch.totalCnt = totalCntMatch ? totalCntMatch[1] : "0";
-  obj.ElawSearch.page = pageMatch ? pageMatch[1] : "1";
-  obj.ElawSearch.elaw = [];
-
-  // Extract law items (API uses <law id="N"> format)
-  const itemMatches = xml.matchAll(/<law[^>]*>([\s\S]*?)<\/law>/gi);
-
-  for (const match of itemMatches) {
-    const itemContent = match[1];
-    const item: any = {};
-
-    const extract = (tag: string) => extractTag(itemContent, tag);
-
-    item.법령ID = extract("법령ID");
-    item.영문법령명 = extract("법령명영문");
-    item.한글법령명 = stripHtml(extract("법령명한글"));
-    item.시행일자 = extract("시행일자");
-    item.법령구분 = extract("법령구분명");
-    item.법령상세링크 = extract("법령상세링크");
-
-    if (item.법령ID || item.영문법령명) {
-      obj.ElawSearch.elaw.push(item);
-    }
-  }
-
-  return obj;
-}

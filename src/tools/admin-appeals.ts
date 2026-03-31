@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { parseAdminAppealXML as parseAdminAppealXMLShared } from "../lib/xml-parser.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 // Administrative appeal decision search tool - Search for administrative tribunal rulings
 export const searchAdminAppealsSchema = z.object({
@@ -85,13 +86,7 @@ export async function searchAdminAppeals(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_admin_appeals")
   }
 }
 
@@ -167,12 +162,6 @@ export async function getAdminAppealText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_admin_appeal_text")
   }
 }

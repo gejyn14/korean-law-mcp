@@ -6,6 +6,7 @@
 import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 import { searchLaw } from "./search.js"
 import { searchAdminRule } from "./admin-rule.js"
 import { searchOrdinance } from "./ordinance-search.js"
@@ -122,12 +123,6 @@ export async function searchAll(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "search_all")
   }
 }

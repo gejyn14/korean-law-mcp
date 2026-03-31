@@ -38,26 +38,46 @@ export function extractTag(content: string, tag: string): string {
  * @param rootTag 루트 태그 (예: PrecSearch, Expc, Decc)
  * @param itemTag 항목 태그 (예: prec, expc, decc)
  * @param fieldExtractor 필드 추출 함수
+ * @param options 추가 옵션 (totalTag, pageTag 커스터마이징)
  */
 export function parseSearchXML<T>(
   xml: string,
   rootTag: string,
   itemTag: string,
-  fieldExtractor: (content: string) => T
+  fieldExtractor: (content: string) => T,
+  options?: { totalTag?: string; pageTag?: string; useIndexOf?: boolean }
 ): { totalCnt: number; page: number; items: T[] } {
-  // 루트 태그 추출
-  const rootRegex = new RegExp(`<${rootTag}[^>]*>([\\s\\S]*?)<\\/${rootTag}>`)
-  const rootMatch = xml.match(rootRegex)
+  const totalTag = options?.totalTag ?? "totalCnt"
+  const pageTag = options?.pageTag ?? "page"
 
-  if (!rootMatch) {
-    return { totalCnt: 0, page: 1, items: [] }
+  let content: string
+
+  if (rootTag === "") {
+    // rootTag가 빈 문자열이면 전체 XML을 content로 사용
+    content = xml
+  } else if (options?.useIndexOf) {
+    // indexOf/lastIndexOf 방식 (대소문자 정확 매칭 필요 시)
+    const rootStartTag = `<${rootTag}>`
+    const rootEndTag = `</${rootTag}>`
+    const startIdx = xml.indexOf(rootStartTag)
+    const endIdx = xml.lastIndexOf(rootEndTag)
+    if (startIdx === -1 || endIdx === -1) {
+      return { totalCnt: 0, page: 1, items: [] }
+    }
+    content = xml.substring(startIdx + rootStartTag.length, endIdx)
+  } else {
+    // 루트 태그 추출 (정규식)
+    const rootRegex = new RegExp(`<${rootTag}[^>]*>([\\s\\S]*?)<\\/${rootTag}>`)
+    const rootMatch = xml.match(rootRegex)
+    if (!rootMatch) {
+      return { totalCnt: 0, page: 1, items: [] }
+    }
+    content = rootMatch[1]
   }
 
-  const content = rootMatch[1]
-
   // totalCnt, page 추출
-  const totalCnt = parseInt(extractTag(content, "totalCnt") || "0", 10)
-  const page = parseInt(extractTag(content, "page") || "1", 10)
+  const totalCnt = parseInt(extractTag(content, totalTag) || "0", 10)
+  const page = parseInt(extractTag(content, pageTag) || "1", 10)
 
   // 항목 추출
   const itemRegex = new RegExp(`<${itemTag}[^>]*>([\\s\\S]*?)<\\/${itemTag}>`, "g")

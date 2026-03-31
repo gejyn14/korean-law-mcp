@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { LawApiClient } from "../lib/api-client.js"
 import { parseInterpretationXML } from "../lib/xml-parser.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const searchInterpretationsSchema = z.object({
   query: z.string().describe("Search keyword (e.g., '자동차', '근로기준법')"),
@@ -100,13 +101,7 @@ export async function searchInterpretations(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "search_interpretations");
   }
 }
 
@@ -187,13 +182,7 @@ export async function getInterpretationText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, "get_interpretation_text");
   }
 }
 

@@ -6,6 +6,7 @@ import { z } from "zod"
 import { DOMParser } from "@xmldom/xmldom"
 import type { LawApiClient } from "../lib/api-client.js"
 import { truncateResponse } from "../lib/schemas.js"
+import { formatToolError } from "../lib/errors.js"
 
 export const CompareOldNewSchema = z.object({
   mst: z.string().optional().describe("법령일련번호"),
@@ -120,12 +121,6 @@ export async function compareOldNew(
       }]
     }
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    }
+    return formatToolError(error, "compare_old_new")
   }
 }

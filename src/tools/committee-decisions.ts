@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { LawApiClient } from "../lib/api-client.js";
 import { truncateResponse } from "../lib/schemas.js";
-import { extractTag } from "../lib/xml-parser.js";
+import { parseSearchXML, extractTag } from "../lib/xml-parser.js";
+import { formatToolError } from "../lib/errors.js";
 
 // Common schema for committee decision search (query optional)
 const baseSearchSchemaOptionalQuery = {
@@ -164,18 +165,25 @@ async function searchCommitteeDecisions(
       extraParams,
       apiKey: args.apiKey,
     });
-    const result = parseCommitteeXML(xmlText, target);
 
+    // parseSearchXML 사용 (rootTag: searchKey, itemTag: target)
     const searchKey = getSearchKey(target);
-    if (!result[searchKey]) {
-      throw new Error("Invalid response format from API");
-    }
-
-    const data = result[searchKey];
-    const totalCount = parseInt(data.totalCnt || "0");
-    const currentPage = parseInt(data.page || "1");
     const itemKey = target.toLowerCase();
-    const decisions = data[itemKey] ? (Array.isArray(data[itemKey]) ? data[itemKey] : [data[itemKey]]) : [];
+    const { totalCnt, page: currentPage, items: decisions } = parseSearchXML(
+      xmlText, searchKey, itemKey,
+      (content) => ({
+        결정일련번호: extractTag(content, "결정문일련번호") || extractTag(content, "결정일련번호") || extractTag(content, "판례일련번호") || extractTag(content, "일련번호"),
+        사건명: extractTag(content, "사건명") || extractTag(content, "안건명") || extractTag(content, "제목"),
+        사건번호: extractTag(content, "사건번호") || extractTag(content, "의안번호"),
+        결정일자: extractTag(content, "결정일자") || extractTag(content, "의결일") || extractTag(content, "선고일자") || extractTag(content, "등록일"),
+        결정유형: extractTag(content, "결정유형") || extractTag(content, "결정구분") || extractTag(content, "판결유형") || extractTag(content, "회의종류"),
+        재결청: extractTag(content, "재결청") || extractTag(content, "기관명"),
+        상세링크: extractTag(content, "결정문상세링크") || extractTag(content, "상세링크") || extractTag(content, "판례상세링크"),
+      }),
+      { useIndexOf: true }
+    );
+
+    const totalCount = totalCnt;
 
     if (totalCount === 0) {
       let errorMsg = `검색 결과가 없습니다.`;
@@ -215,13 +223,7 @@ async function searchCommitteeDecisions(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, `search_${target}_decisions`);
   }
 }
 
@@ -291,13 +293,7 @@ async function getCommitteeDecisionText(
       }]
     };
   } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
-      }],
-      isError: true
-    };
+    return formatToolError(error, `get_${target}_decision_text`);
   }
 }
 
@@ -322,53 +318,3 @@ function getServiceKey(target: string): string {
   return mapping[target] || `${target.charAt(0).toUpperCase() + target.slice(1)}Service`;
 }
 
-function parseCommitteeXML(xml: string, target: string): any {
-  const obj: any = {};
-
-  // Get the search key (e.g., "Ftc", "Nlrc", "Pipc")
-  const searchKey = getSearchKey(target);
-
-  // Find root element using indexOf/lastIndexOf for accurate matching
-  // This avoids case-insensitive regex matching inner tags like </nlrc> as </Nlrc>
-  const rootStartTag = `<${searchKey}>`;
-  const rootEndTag = `</${searchKey}>`;
-  const startIdx = xml.indexOf(rootStartTag);
-  const endIdx = xml.lastIndexOf(rootEndTag);
-
-  if (startIdx === -1 || endIdx === -1) return obj;
-
-  const content = xml.substring(startIdx + rootStartTag.length, endIdx);
-  obj[searchKey] = {};
-
-  const totalCntMatch = content.match(/<totalCnt>([^<]*)<\/totalCnt>/);
-  const pageMatch = content.match(/<page>([^<]*)<\/page>/);
-
-  obj[searchKey].totalCnt = totalCntMatch ? totalCntMatch[1] : "0";
-  obj[searchKey].page = pageMatch ? pageMatch[1] : "1";
-
-  // Extract items - use lowercase target (ftc, nlrc, pipc)
-  const itemKey = target.toLowerCase();
-  const itemRegex = new RegExp(`<${itemKey}[^>]*>([\\s\\S]*?)<\\/${itemKey}>`, 'g');
-  const itemMatches = content.matchAll(itemRegex);
-  obj[searchKey][itemKey] = [];
-
-  for (const match of itemMatches) {
-    const itemContent = match[1];
-    const item: any = {};
-
-    const extract = (tag: string) => extractTag(itemContent, tag);
-
-    item.결정일련번호 = extract("결정문일련번호") || extract("결정일련번호") || extract("판례일련번호") || extract("일련번호");
-    // 위원회별 필드명 차이: 공정위=사건명, 개보위=안건명, 노동위=사건명
-    item.사건명 = extract("사건명") || extract("안건명") || extract("제목");
-    item.사건번호 = extract("사건번호") || extract("의안번호");
-    item.결정일자 = extract("결정일자") || extract("의결일") || extract("선고일자") || extract("등록일");
-    item.결정유형 = extract("결정유형") || extract("결정구분") || extract("판결유형") || extract("회의종류");
-    item.재결청 = extract("재결청") || extract("기관명");
-    item.상세링크 = extract("결정문상세링크") || extract("상세링크") || extract("판례상세링크");
-
-    obj[searchKey][itemKey].push(item);
-  }
-
-  return obj;
-}
