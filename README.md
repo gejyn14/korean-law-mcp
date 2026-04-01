@@ -11,6 +11,8 @@
 
 [한국어](./README-KR.md)
 
+![Korean Law MCP demo](./demo.gif)
+
 ---
 
 ## What's New in v2.2.0

@@ -10,6 +10,8 @@
 
 [English](./README.md)
 
+![Korean Law MCP 데모](./demo.gif)
+
 ---
 
 ## v2.2.0 변경사항
