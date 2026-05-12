@@ -117,7 +117,14 @@ Include your API key in the URL:
 }
 ```
 
-**For web clients (Claude.ai, etc.)** — same URL works everywhere. v3 exposes only 14 tools by default, no profile selection needed.
+**Works with any HTTP-MCP client** — same URL plugs into:
+
+- **Claude.ai** (web) — Settings → Connectors → Add custom connector
+- **ChatGPT Desktop** (Plus/Team/Enterprise) — Settings → Connectors → Add custom MCP server
+- **Claude Desktop** — supports remote URL in `claude_desktop_config.json`
+- **Cursor / Windsurf / Zed** — supports `url` field in their MCP config
+
+v3 exposes only 14 tools by default — no profile selection needed.
 
 > 14 tools (8 chains + 2 core + 2 unified + 2 meta) cover all 39 APIs. Use `discover_tools` → `execute_tool` for specialized tools.
 
@@ -336,6 +343,27 @@ User: "근로기준법 제74조 해석례"
 User: "산업안전보건법 별표1 내용"
 → get_annexes("산업안전보건법 별표1") → HWPX download → Markdown table
 ```
+
+### Auto-invocation Trigger Phrases
+
+Once installed, type natural language — the AI picks the right tool automatically. No need to memorize tool names.
+
+| User asks | Auto-invoked tool |
+|------|--------|
+| "민법 제750조 알려줘" / "Article 750 of the Civil Act" | `search_law` → `get_law_text` |
+| "근로기준법 제74조" | `search_law` → `get_law_text` |
+| "음주운전 처벌 기준" | `chain_full_research` |
+| "건축법 시행령까지 같이 봐줘" | `chain_law_system` |
+| "광진구 주차 조례" | `chain_ordinance_compare` |
+| "민법 최근 개정 비교" | `chain_amendment_track` |
+| "이 계약서 검토해줘" + contract text | `chain_document_review` |
+| "부당해고 판례" | `search_decisions(domain="precedent")` |
+
+**If the AI doesn't auto-invoke:**
+
+- Trigger explicitly once — "Use korean-law to find ○○법" — and the AI will keep using it for similar questions.
+- In Claude Desktop, choose **"Always allow"** when first prompted for tool permission.
+- In ChatGPT Desktop, make sure the **connectors/tools toggle** in the chat input is enabled.
 
 ---
 

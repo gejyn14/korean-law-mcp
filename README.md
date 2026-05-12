@@ -135,7 +135,27 @@ https://korean-law-mcp.fly.dev/mcp?oc=honggildong
 
 ---
 
-### 방법 2: AI 데스크톱 앱에서 사용 (설치 없음)
+### 방법 2: ChatGPT Desktop에서 사용 (설치 없음)
+
+ChatGPT Desktop(Plus/Team/Enterprise)도 커스텀 MCP 커넥터를 지원합니다. Claude.ai와 거의 같은 방식입니다.
+
+**커넥터 추가 방법:**
+
+1. ChatGPT Desktop을 실행하고 좌측 하단 **본인 이름 → 설정(Settings)**을 엽니다.
+2. **커넥터(Connectors)** 또는 **개발자(Developer) 모드** 메뉴로 들어갑니다.
+3. **커스텀 커넥터 추가**(Add custom MCP server) 옵션을 선택합니다.
+4. 아래 정보를 입력합니다(`honggildong`을 본인 인증키로 바꾸세요):
+   - **이름**: `korean-law`
+   - **URL**: `https://korean-law-mcp.fly.dev/mcp?oc=honggildong`
+   - **인증**: 없음 (URL에 키 포함)
+5. 저장 후 채팅창에서 "근로기준법 제74조 알려줘"라고 입력하면 자동 호출됩니다.
+
+> **참고**: ChatGPT Desktop의 커넥터 메뉴 위치는 OpenAI 업데이트로 바뀔 수 있습니다. 메뉴를 못 찾으면 [help.openai.com](https://help.openai.com)에서 "MCP" 또는 "connector"를 검색해 보세요.
+> Free 플랜은 커스텀 커넥터를 지원하지 않을 수 있습니다.
+
+---
+
+### 방법 3: 데스크톱 AI 앱 설정 파일로 등록 (Claude Desktop, Cursor, Windsurf)
 
 Claude Desktop, Cursor, Windsurf 같은 **데스크톱 앱**을 쓰고 있다면, 설정 파일에 아래 내용을 추가하세요.
 
@@ -165,7 +185,7 @@ Claude Desktop, Cursor, Windsurf 같은 **데스크톱 앱**을 쓰고 있다면
 
 ---
 
-### 방법 3: 내 컴퓨터에 직접 설치 (오프라인 가능)
+### 방법 4: 내 컴퓨터에 직접 설치 (오프라인 가능)
 
 인터넷 없이 쓰고 싶거나, 원격 서버를 거치지 않으려면 직접 설치할 수 있습니다.
 
@@ -196,7 +216,7 @@ npm install -g korean-law-mcp
 
 ---
 
-### 방법 4: 터미널(CLI)에서 직접 사용
+### 방법 5: 터미널(CLI)에서 직접 사용
 
 개발자라면 터미널에서 직접 법령을 검색할 수 있습니다.
 
@@ -227,7 +247,7 @@ korean-law help search_law                 # 도구별 도움말
 |------|--------|-----------|
 | URL에 포함 | 주소 끝에 `?oc=내키` | 웹 클라이언트에서 가장 간편 |
 | HTTP 헤더 | `apikey: 내키` | 프로그래밍으로 연동할 때 |
-| 환경변수 | `LAW_OC=내키` | 로컬 설치(방법 3, 4) |
+| 환경변수 | `LAW_OC=내키` | 로컬 설치(방법 4, 5) |
 | 도구 파라미터 | `apiKey: "내키"` | 특정 요청만 다른 키 쓸 때 |
 
 ---
@@ -247,6 +267,28 @@ korean-law help search_law                 # 도구별 도움말
 "산업안전보건법 별표1 내용 알려줘"
 → get_annexes(lawName="산업안전보건법 별표1") → HWPX 파일 다운로드 → 표/텍스트 Markdown 변환
 ```
+
+### AI가 자동으로 호출하게 하는 트리거 패턴
+
+설정만 마치면 아래처럼 평소에 쓰는 한국어 문장만 입력해도 AI가 알아서 적절한 도구를 호출합니다. 도구명을 외울 필요 없습니다.
+
+| 사용자 발화 예시 | 자동 호출되는 도구 |
+|------|--------|
+| "민법 제750조 알려줘" | `search_law` → `get_law_text` |
+| "근로기준법 제74조 내용은?" | `search_law` → `get_law_text` |
+| "음주운전 처벌 기준" | `chain_full_research` |
+| "건축법 시행령까지 같이 봐줘" | `chain_law_system` |
+| "광진구 주차 조례 검색" | `chain_ordinance_compare` |
+| "민법 최근 개정 비교" | `chain_amendment_track` |
+| "이 계약서 검토해줘" + 계약서 본문 | `chain_document_review` |
+| "부당해고 판례 보여줘" | `search_decisions(domain="precedent")` |
+
+**잘 호출되지 않는다면:**
+
+- 한 번 명시적으로 트리거하기 — "korean-law 도구로 ○○법 찾아줘"라고 한 번만 알려주면 이후 비슷한 질문엔 자동 호출됩니다.
+- 첫 질문에 "한국 법", "법령", "법 조항" 같은 키워드를 명시하면 인식률이 올라갑니다.
+- Claude Desktop은 첫 호출 시 권한을 묻습니다 → **"항상 허용"** 선택 권장.
+- ChatGPT Desktop은 채팅창 하단의 **도구/커넥터 토글**이 켜져 있는지 확인하세요.
 
 ---
 

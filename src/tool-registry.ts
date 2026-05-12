@@ -76,13 +76,13 @@ export const allTools: McpTool[] = [
   // === 법령 검색/조회 ===
   {
     name: "search_law",
-    description: "[법령검색] 법령명 키워드검색 → lawId, mst 획득. 약칭 자동변환. 법령 조회 전 식별자 확보용.",
+    description: "[법령검색] 한국 법령(법률·시행령·시행규칙)을 이름으로 검색해 lawId/mst 획득. 사용자가 '○○법', '○○법 알려줘', '○○법 찾아줘', '○○법 검색', 'Korean law on X' 등을 묻거나 한국 법령 식별자가 필요할 때 즉시 호출. 약칭 자동변환(예: 화관법→화학물질관리법). 조문 본문은 get_law_text로 후속 호출.",
     schema: SearchLawSchema,
     handler: searchLaw
   },
   {
     name: "get_law_text",
-    description: "[법령조회] 조문 전문 조회. mst/lawId 필수, jo로 특정 조문만 가능.",
+    description: "[법령조회] 한국 법령 조문(條文) 전문 조회. 사용자가 '제○조', '○○법 ○조', '○○법 ○조 내용', '○○법 본문', 'Article N of Korean ○○ Act' 등 특정 조항을 요청할 때 사용. mst/lawId 필수(없으면 search_law 먼저), jo='제38조' 같은 형태로 조문 지정.",
     schema: GetLawTextSchema,
     handler: getLawText
   },
@@ -654,13 +654,13 @@ export const allTools: McpTool[] = [
   // === 통합 도구 (v3) ===
   {
     name: "search_decisions",
-    description: "[통합검색] 판례·해석례·헌재·행심·조세심판·관세·공정위·개인정보위·노동위·권익위·소청심사·학칙·공사공단·공공기관·조약·영문법령 등 17개 도메인 통합 검색. domain 파라미터로 선택.",
+    description: "[통합검색] 한국 판례·결정례·심판례 통합 검색(17개 도메인). 사용자가 '판례', '대법원 판결', '헌재 결정', '행정심판', '조세심판', '공정위/노동위/권익위/개인정보위 결정', '소청심사', '관세 해석례', '법령해석례', '조약', '영문법령' 등을 묻거나 분쟁·불복·해석 사례를 찾을 때 사용. domain 파라미터로 선택.",
     schema: SearchDecisionsSchema,
     handler: searchDecisions
   },
   {
     name: "get_decision_text",
-    description: "[통합조회] 17개 도메인(판례·결정례·재결례·학칙·조약·영문법령 등) 전문 조회. domain+id로 지정.",
+    description: "[통합조회] search_decisions로 찾은 판례·결정례·재결례·학칙·조약·영문법령 등의 전문(全文) 조회. domain + id 지정 필수. 사용자가 특정 사건번호의 본문/이유/판시사항을 요청할 때 사용.",
     schema: GetDecisionTextSchema,
     handler: getDecisionText
   },
